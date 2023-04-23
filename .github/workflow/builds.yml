@@ -1,0 +1,25 @@
+name: Rust Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Rust
+        run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+      - name: Check out code
+        uses: actions/checkout@v2
+      - name: Build
+        run: cargo build --release
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: cli
+          path: target/release/propeller
