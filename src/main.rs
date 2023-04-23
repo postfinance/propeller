@@ -10,6 +10,11 @@ use rand::distributions::{Alphanumeric, DistString};
 use serde_json::json;
 use std::fs::File as FsFile;
 
+fn generate_username(prefix: &str, length: usize) -> String {
+    let random_part = Alphanumeric.sample_string(&mut rand::thread_rng(), length);
+    format!("{}{}", prefix, random_part)
+}
+
 /**
  * **Note:** In principle, all RNGs in Rand implementing CryptoRng are suitable as a source of
  * randomness for generating passwords (if they are properly seeded), but it is more conservative to
@@ -57,16 +62,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut config = Config::default();
     config.merge(File::with_name(&config_path))?;
 
-    println!("Enter username: ");
-    let mut username = String::new();
-    std::io::stdin().read_line(&mut username)?;
-    let username = username.trim();
+    let username = generate_username(&prefix, username_length);
+    println!("Generated username: {}", username);
 
     let password = generate_random_password(12); // Generate a random password with 12 characters
     println!("Generated password: {}", password);
 
-    create_user(username, &password, &config)?;
-    write_to_vault(username, &password, &config)?;
+    create_user(&username, &password, &config)?;
+    write_to_vault(&username, &password, &config)?;
 
     Ok(())
 }
