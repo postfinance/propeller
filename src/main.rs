@@ -5,8 +5,10 @@ extern crate postgres;
 use config::Config;
 use config::File;
 use hashicorp_vault::client::VaultClient;
-use postgres::{Client, NoTls};
+use postgres::{Client as PostgresClient, NoTls};
 use rand::distributions::{Alphanumeric, DistString};
+use reqwest::blocking::Client as HttpClient;
+use reqwest::header::HeaderMap;
 use serde_json::json;
 use std::fs::File as FsFile;
 use std::process::exit;
@@ -30,8 +32,10 @@ fn generate_random_password(length: usize) -> String {
 }
 
 fn create_user(username: &str, password: &str, config: &Config) -> Result<(), Box<dyn std::error::Error>> {
+    // TODO: Could be [database] block
     let database_url = config.get_string("database_url")?;
-    let mut client = Client::connect(&database_url, NoTls)?;
+    // TODO: Use one connection through whole lifecycle
+    let mut client = PostgresClient::connect(&database_url, NoTls)?;
     client.execute(
         &format!("CREATE USER {} WITH PASSWORD '{}';", username, password),
         &[],
@@ -40,6 +44,7 @@ fn create_user(username: &str, password: &str, config: &Config) -> Result<(), Bo
 }
 
 fn write_to_vault(username: &str, password: &str, secret_path: &str, config: &Config) -> Result<(), Box<dyn std::error::Error>> {
+    // TODO: Could be [vault] block
     let vault_url = config.get_string("vault_url")?;
     let vault_token = config.get_string("vault_token")?;
     let client = VaultClient::new(&vault_url, &vault_token)?;
@@ -48,6 +53,29 @@ fn write_to_vault(username: &str, password: &str, secret_path: &str, config: &Co
         "password": password
     });
     client.set_secret(secret_path,  secret_data.to_string())?;
+    Ok(())
+}
+
+fn trigger_argocd_sync(config: &Config) -> Result<(), Box<dyn std::error::Error>> {
+    // TODO: Could be [argocd] block
+    let argocd_api_url = config.get_string("argocd_url")?;
+    let argocd_namespace = config.get_string("argocd_namespace")?;
+    let argocd_token = config.get_string("argocd_token")?;
+    let sync_url = format!("{}/api/v1/applications/{}/sync", argocd_api_url, argocd_namespace);
+
+    // Set headers for the ArgoCD API request
+    let mut headers = HeaderMap::new();
+    headers.insert("Authorization", format!("Bearer {}", argocd_token).parse().unwrap());
+    headers.insert("Content-Type", "application/json".parse().unwrap());
+
+    // Create a reqwest client and send a POST request to trigger the namespace sync
+    // TODO: Use one client through whole lifecycle
+    let client = HttpClient::new();
+    let response = client
+        .post(&sync_url)
+        .headers(headers)
+        .send()?;
+
     Ok(())
 }
 
@@ -94,6 +122,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
+
+    trigger_argocd_sync(&config)?;
 
     Ok(())
 }
