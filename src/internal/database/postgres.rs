@@ -17,7 +17,7 @@ impl DatabaseClient for PostgresClient {
                     println!("🛑 Failed to load PostgreSQL configuration: {}", err);
                     exit(1)
                 }
-            }
+            },
         }
     }
 

@@ -16,17 +16,22 @@ use reqwest::blocking::Client as HttpClient;
 use reqwest::header::HeaderMap;
 use serde_json::json;
 
-fn get_existing_users_from_postgres(prefix: &str, config: &Config) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+fn get_existing_users_from_postgres(
+    prefix: &str,
+    config: &Config,
+) -> Result<Vec<String>, Box<dyn std::error::Error>> {
     // TODO: Could be [database] block
     let database_url = config.get_string("database_url")?;
-
 
     // Connect to PostgreSQL and execute a SELECT query
     // TODO: Use one connection through whole lifecycle
     let mut client = PostgresClient::connect(&database_url, NoTls)?;
 
     let result = client.query(
-        &format!("SELECT username FROM users WHERE username LIKE '{}%'", prefix),
+        &format!(
+            "SELECT username FROM users WHERE username LIKE '{}%'",
+            prefix
+        ),
         &[],
     );
 
@@ -41,7 +46,10 @@ fn get_existing_users_from_postgres(prefix: &str, config: &Config) -> Result<Vec
             }
         }
         Err(err) => {
-            println!("Failed to retrieve existing users from PostgreSQL database: {}", err);
+            println!(
+                "Failed to retrieve existing users from PostgreSQL database: {}",
+                err
+            );
         }
     }
 
@@ -66,7 +74,11 @@ fn generate_random_password(length: usize) -> String {
     password
 }
 
-fn create_user(username: &str, password: &str, config: &Config) -> Result<(), Box<dyn std::error::Error>> {
+fn create_user(
+    username: &str,
+    password: &str,
+    config: &Config,
+) -> Result<(), Box<dyn std::error::Error>> {
     // TODO: Could be [database] block
     let database_url = config.get_string("database_url")?;
     // TODO: Use one connection through whole lifecycle
@@ -78,7 +90,12 @@ fn create_user(username: &str, password: &str, config: &Config) -> Result<(), Bo
     Ok(())
 }
 
-fn write_to_vault(username: &str, password: &str, secret_path: &str, config: &Config) -> Result<(), Box<dyn std::error::Error>> {
+fn write_to_vault(
+    username: &str,
+    password: &str,
+    secret_path: &str,
+    config: &Config,
+) -> Result<(), Box<dyn std::error::Error>> {
     // TODO: Could be [vault] block
     let vault_url = config.get_string("vault_url")?;
     let vault_token = config.get_string("vault_token")?;
@@ -96,20 +113,23 @@ fn trigger_argocd_sync(config: &Config) -> Result<(), Box<dyn std::error::Error>
     let argocd_api_url = config.get_string("argocd_url")?;
     let argocd_namespace = config.get_string("argocd_namespace")?;
     let argocd_token = config.get_string("argocd_token")?;
-    let sync_url = format!("{}/api/v1/applications/{}/sync", argocd_api_url, argocd_namespace);
+    let sync_url = format!(
+        "{}/api/v1/applications/{}/sync",
+        argocd_api_url, argocd_namespace
+    );
 
     // Set headers for the ArgoCD API request
     let mut headers = HeaderMap::new();
-    headers.insert("Authorization", format!("Bearer {}", argocd_token).parse().unwrap());
+    headers.insert(
+        "Authorization",
+        format!("Bearer {}", argocd_token).parse().unwrap(),
+    );
     headers.insert("Content-Type", "application/json".parse().unwrap());
 
     // Create a reqwest client and send a POST request to trigger the namespace sync
     // TODO: Use one client through whole lifecycle
     let client = HttpClient::new();
-    let response = client
-        .post(&sync_url)
-        .headers(headers)
-        .send()?;
+    let response = client.post(&sync_url).headers(headers).send()?;
 
     Ok(())
 }
@@ -162,7 +182,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         create_user(&username, &password, &config)?;
         match write_to_vault(&username, &password, &secret_path, &config) {
             Ok(()) => {
-                println!("Stored username and password for prefix '{}' in Vault secret '{}'", prefix, secret_path);
+                println!(
+                    "Stored username and password for prefix '{}' in Vault secret '{}'",
+                    prefix, secret_path
+                );
             }
             Err(e) => {
                 println!("Failed to store username and password for prefix '{}' in Vault secret '{}': {}", prefix, secret_path, e);

@@ -6,9 +6,7 @@ struct DatabaseConfig {
 
 impl DatabaseConfig {
     pub fn new(url: String) -> Self {
-        DatabaseConfig {
-            url: url,
-        }
+        DatabaseConfig { url: url }
     }
 }
 
