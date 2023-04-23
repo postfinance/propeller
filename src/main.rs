@@ -1,12 +1,16 @@
-extern crate postgres;
 extern crate hashicorp_vault;
+extern crate postgres;
+extern crate config;
 
-use postgres::{Client, NoTls};
 use hashicorp_vault::client::VaultClient;
+use postgres::{Client, NoTls};
 use serde_json::json;
+use config::Config;
+use config::File;
 
-fn create_user(username: &str, password: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let mut client = Client::connect("postgresql://your_username:your_password@your_host:your_port/your_database_name", NoTls)?;
+fn create_user(username: &str, password: &str, config: &Config) -> Result<(), Box<dyn std::error::Error>> {
+    let database_url = config.get_string("database_url")?;
+    let mut client = Client::connect(&database_url, NoTls)?;
     client.execute(
         &format!("CREATE USER {} WITH PASSWORD '{}';", username, password),
         &[],
@@ -14,18 +18,24 @@ fn create_user(username: &str, password: &str) -> Result<(), Box<dyn std::error:
     Ok(())
 }
 
-fn write_to_vault(username: &str, password: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let client = VaultClient::new("your_vault_url", "your_vault_token")?;
-    let secret_path = "your_vault_secret_path";
+fn write_to_vault(username: &str, password: &str, config: &Config) -> Result<(), Box<dyn std::error::Error>> {
+    let vault_url = config.get_string("vault_url")?;
+    let vault_token = config.get_string("vault_token")?;
+    let client = VaultClient::new(&vault_url, &vault_token)?;
+    let secret_path = config.get_string("vault_secret_path")?;
     let secret_data = json!({
         "username": username,
         "password": password
     });
-    client.set_secret(secret_path, secret_data.to_string())?;
+    client.set_secret(&secret_path, secret_data.to_string())?;
     Ok(())
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Load configuration from rc file
+    let mut config = Config::default();
+    config.merge(File::with_name("config"))?; // Replace with your rc file name
+
     println!("Enter username: ");
     let mut username = String::new();
     std::io::stdin().read_line(&mut username)?;
@@ -36,8 +46,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     std::io::stdin().read_line(&mut password)?;
     let password = password.trim();
 
-    create_user(username, password)?;
-    write_to_vault(username, password)?;
+    create_user(username, password, &config)?;
+    write_to_vault(username, password, &config)?;
 
     Ok(())
 }
