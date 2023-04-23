@@ -2,59 +2,20 @@ mod internal;
 
 extern crate config;
 extern crate hashicorp_vault;
-extern crate postgres;
 
 use std::fs::File as FsFile;
 use std::process::exit;
 
+use crate::internal::database::postgres::PostgresClient;
+use crate::internal::database::{DatabaseClient, DatabaseConfig};
+
 use config::Config;
 use config::File;
 use hashicorp_vault::client::VaultClient;
-use postgres::{Client as PostgresClient, NoTls};
 use rand::distributions::{Alphanumeric, DistString};
 use reqwest::blocking::Client as HttpClient;
 use reqwest::header::HeaderMap;
 use serde_json::json;
-
-fn get_existing_users_from_postgres(
-    prefix: &str,
-    config: &Config,
-) -> Result<Vec<String>, Box<dyn std::error::Error>> {
-    // TODO: Could be [database] block
-    let database_url = config.get_string("database_url")?;
-
-    // Connect to PostgreSQL and execute a SELECT query
-    // TODO: Use one connection through whole lifecycle
-    let mut client = PostgresClient::connect(&database_url, NoTls)?;
-
-    let result = client.query(
-        &format!(
-            "SELECT username FROM users WHERE username LIKE '{}%'",
-            prefix
-        ),
-        &[],
-    );
-
-    // Example code to query PostgreSQL and retrieve existing users
-    let mut existing_users = Vec::new();
-
-    match result {
-        Ok(rows) => {
-            for row in &rows {
-                let username: String = row.get("username");
-                existing_users.push(username);
-            }
-        }
-        Err(err) => {
-            println!(
-                "Failed to retrieve existing users from PostgreSQL database: {}",
-                err
-            );
-        }
-    }
-
-    Ok(existing_users)
-}
 
 fn generate_username(prefix: &str, length: usize) -> String {
     let random_part = Alphanumeric.sample_string(&mut rand::thread_rng(), length);
@@ -72,22 +33,6 @@ fn generate_username(prefix: &str, length: usize) -> String {
 fn generate_random_password(length: usize) -> String {
     let password = Alphanumeric.sample_string(&mut rand::thread_rng(), length);
     password
-}
-
-fn create_user(
-    username: &str,
-    password: &str,
-    config: &Config,
-) -> Result<(), Box<dyn std::error::Error>> {
-    // TODO: Could be [database] block
-    let database_url = config.get_string("database_url")?;
-    // TODO: Use one connection through whole lifecycle
-    let mut client = PostgresClient::connect(&database_url, NoTls)?;
-    client.execute(
-        &format!("CREATE USER {} WITH PASSWORD '{}';", username, password),
-        &[],
-    )?;
-    Ok(())
 }
 
 fn write_to_vault(
@@ -134,12 +79,6 @@ fn trigger_argocd_sync(config: &Config) -> Result<(), Box<dyn std::error::Error>
     Ok(())
 }
 
-fn delete_users_from_postgres(users: Vec<String>, config: &Config) {
-    // Perform PostgreSQL delete operation here
-    println!("Deleting users from PostgreSQL database...");
-    // Example implementation: Connect to PostgreSQL, execute delete query for each user
-}
-
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Check if ".propellerrc" file exists
     let config_path = ".propellerrc";
@@ -152,6 +91,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // TODO: use `ConfigBuilder` instead
     config.merge(File::with_name(&config_path))?;
 
+    let mut client = PostgresClient::new(&DatabaseConfig::new(config.get_string("database_url")?));
     let mut existing_users: Vec<String> = Vec::new();
 
     let username_map = config.get_array("secrets")?; // Read username map from configuration
@@ -166,9 +106,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // TODO: `unwrap` is unsafe!
         let prefix = secret_config.get("prefix").unwrap().to_string();
+        let role = secret_config.get("role").unwrap().to_string();
         let secret_path = secret_config.get("vault_path").unwrap().to_string();
 
-        for existing_username in get_existing_users_from_postgres(&prefix, &config)? {
+        for existing_username in client.get_existing_users(&prefix)? {
             existing_users.push(existing_username);
         }
 
@@ -179,7 +120,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let password = generate_random_password(12); // Generate a random password with 12 characters
         println!("Generated password for prefix '{}': {}", prefix, password);
 
-        create_user(&username, &password, &config)?;
+        client.create_user_and_assign_role(&username, &password, &role)?;
         match write_to_vault(&username, &password, &secret_path, &config) {
             Ok(()) => {
                 println!(
@@ -197,7 +138,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Delete users from PostgreSQL database if any existing users were found
     if !existing_users.is_empty() {
-        delete_users_from_postgres(existing_users, &config);
+        client.drop_users(existing_users);
     }
 
     Ok(())
