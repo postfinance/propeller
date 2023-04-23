@@ -9,6 +9,7 @@ use postgres::{Client, NoTls};
 use rand::distributions::{Alphanumeric, DistString};
 use serde_json::json;
 use std::fs::File as FsFile;
+use std::process::exit;
 
 fn generate_username(prefix: &str, length: usize) -> String {
     let random_part = Alphanumeric.sample_string(&mut rand::thread_rng(), length);
@@ -38,16 +39,15 @@ fn create_user(username: &str, password: &str, config: &Config) -> Result<(), Bo
     Ok(())
 }
 
-fn write_to_vault(username: &str, password: &str, config: &Config) -> Result<(), Box<dyn std::error::Error>> {
+fn write_to_vault(username: &str, password: &str, secret_path: &str, config: &Config) -> Result<(), Box<dyn std::error::Error>> {
     let vault_url = config.get_string("vault_url")?;
     let vault_token = config.get_string("vault_token")?;
     let client = VaultClient::new(&vault_url, &vault_token)?;
-    let secret_path = config.get_string("vault_secret_path")?;
     let secret_data = json!({
         "username": username,
         "password": password
     });
-    client.set_secret(&secret_path, secret_data.to_string())?;
+    client.set_secret(secret_path,  secret_data.to_string())?;
     Ok(())
 }
 
@@ -60,16 +60,40 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Load configuration from ".propellerrc" file
     let mut config = Config::default();
+    // TODO: use `ConfigBuilder` instead
     config.merge(File::with_name(&config_path))?;
 
-    let username = generate_username(&prefix, username_length);
-    println!("Generated username: {}", username);
+    let username_map = config.get_array("secrets")?; // Read username map from configuration
+    for secret in username_map {
+        let secret_config = match  secret.into_table(){
+            Ok(cfg) => cfg,
+            Err(err) => {
+                println!("Failed to load configuration: {}", err);
+                exit(1)
+            }
+        };
 
-    let password = generate_random_password(12); // Generate a random password with 12 characters
-    println!("Generated password: {}", password);
+        // TODO: `unwrap` is unsafe!
+        let prefix = secret_config.get("prefix").unwrap().to_string();
+        let secret_path = secret_config.get("vault_path").unwrap().to_string();
 
-    create_user(&username, &password, &config)?;
-    write_to_vault(&username, &password, &config)?;
+        let username_length = config.get_int("username_length")? as usize;
+        let username = generate_username(&prefix, username_length);
+        println!("Generated username for prefix '{}': {}", prefix, username);
+
+        let password = generate_random_password(12); // Generate a random password with 12 characters
+        println!("Generated password for prefix '{}': {}", prefix, password);
+
+        create_user(&username, &password, &config)?;
+        match write_to_vault(&username, &password, &secret_path, &config) {
+            Ok(()) => {
+                println!("Stored username and password for prefix '{}' in Vault secret '{}'", prefix, secret_path);
+            },
+            Err(e) => {
+                println!("Failed to store username and password for prefix '{}' in Vault secret '{}': {}", prefix, secret_path, e);
+            }
+        }
+    }
 
     Ok(())
 }
