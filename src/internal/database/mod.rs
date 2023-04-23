@@ -5,8 +5,10 @@ pub(crate) struct DatabaseConfig {
 }
 
 impl DatabaseConfig {
-    pub fn new(url: String) -> Self {
-        DatabaseConfig { url }
+    pub fn new(url: &str) -> Self {
+        DatabaseConfig {
+            url: url.to_string(),
+        }
     }
 }
 

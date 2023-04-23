@@ -95,7 +95,7 @@ impl DatabaseClient for PostgresClient {
 
     fn drop_users(&mut self, users: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
         for user in users {
-            drop_user(&user, &mut self.client)
+            drop_user(user.as_str(), &mut self.client)
         }
 
         Ok(())

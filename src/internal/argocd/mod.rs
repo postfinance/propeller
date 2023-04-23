@@ -10,11 +10,11 @@ pub(crate) struct ArgoCDConfig {
 }
 
 impl ArgoCDConfig {
-    pub fn new(api_url: String, namespace: String, token: String) -> Self {
+    pub fn new(api_url: &str, namespace: &str, token: &str) -> Self {
         ArgoCDConfig {
-            api_url,
-            namespace,
-            token,
+            api_url: api_url.to_string(),
+            namespace: namespace.to_string(),
+            token: token.to_string(),
         }
     }
 }

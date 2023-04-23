@@ -6,13 +6,12 @@ use std::process::exit;
 
 use config::Config;
 use config::File;
-use hashicorp_vault::client::VaultClient;
 use rand::distributions::{Alphanumeric, DistString};
-use serde_json::json;
 
 use crate::internal::argocd::{ArgoCDClient, ArgoCDConfig};
-use crate::internal::database::{DatabaseClient, DatabaseConfig};
 use crate::internal::database::postgres::PostgresClient;
+use crate::internal::database::{DatabaseClient, DatabaseConfig};
+use crate::internal::vault::{VaultClient, VaultConfig};
 
 mod internal;
 
@@ -34,24 +33,6 @@ fn generate_random_password(length: usize) -> String {
     password
 }
 
-fn write_to_vault(
-    username: &str,
-    password: &str,
-    secret_path: &str,
-    config: &Config,
-) -> Result<(), Box<dyn std::error::Error>> {
-    // TODO: Could be [vault] block
-    let vault_url = config.get_string("vault_url")?;
-    let vault_token = config.get_string("vault_token")?;
-    let client = VaultClient::new(&vault_url, &vault_token)?;
-    let secret_data = json!({
-        "username": username,
-        "password": password
-    });
-    client.set_secret(secret_path, secret_data.to_string())?;
-    Ok(())
-}
-
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Check if ".propellerrc" file exists
     let config_path = ".propellerrc";
@@ -65,16 +46,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     config.merge(File::with_name(&config_path))?;
 
     // TODO: Could be [postgres] block
-    let mut postgres =
-        PostgresClient::new(&DatabaseConfig::new(config.get_string("database_url")?));
-    let mut existing_users: Vec<String> = Vec::new();
+    let mut postgres = PostgresClient::new(&DatabaseConfig::new(
+        config.get_string("database_url")?.as_str(),
+    ));
 
     // TODO: Could be [argocd] block
     let mut argocd = ArgoCDClient::new(&ArgoCDConfig::new(
-        config.get_string("argocd_url")?,
-        config.get_string("argocd_namespace")?,
-        config.get_string("argocd_token")?,
+        config.get_string("argocd_url")?.as_str(),
+        config.get_string("argocd_namespace")?.as_str(),
+        config.get_string("argocd_token")?.as_str(),
     ));
+
+    // TODO: Could be [vault] block
+    let mut vault = VaultClient::new(&VaultConfig::new(
+        config.get_string("vault_url")?.as_str(),
+        config.get_string("vault_token")?.as_str(),
+    ));
+
+    let mut existing_users: Vec<String> = Vec::new();
 
     let username_map = config.get_array("secrets")?; // Read username map from configuration
     for secret in username_map {
@@ -102,25 +91,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let password = generate_random_password(12); // Generate a random password with 12 characters
         println!("Generated password for prefix '{}': {}", prefix, password);
 
+        let username_key = secret_config.get("username_key").unwrap().to_string();
+        let password_key = secret_config.get("password_key").unwrap().to_string();
+
         postgres.create_user_and_assign_role(&username, &password, &role)?;
-        match write_to_vault(&username, &password, &secret_path, &config) {
-            Ok(()) => {
-                println!(
-                    "Stored username and password for prefix '{}' in Vault secret '{}'",
-                    prefix, secret_path
-                );
-            }
-            Err(e) => {
-                println!("Failed to store username and password for prefix '{}' in Vault secret '{}': {}", prefix, secret_path, e);
-            }
-        }
+        vault.update_username_and_password(
+            username.as_str(),
+            username_key.as_str(),
+            password.as_str(),
+            password_key.as_str(),
+            secret_path.as_str(),
+        )?;
     }
 
     argocd.sync_namespace()?;
 
     // Delete users from PostgreSQL database if any existing users were found
     if !existing_users.is_empty() {
-        postgres.drop_users(existing_users);
+        postgres.drop_users(existing_users)?;
     }
 
     Ok(())
