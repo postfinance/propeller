@@ -16,6 +16,8 @@ jobs:
         run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
       - name: Check out code
         uses: actions/checkout@v2
+      - name: Test Formatting
+        run: cargo fmt --check
       - name: Build
         run: cargo build --release --verbose
       - name: Archive production artifacts
