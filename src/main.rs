@@ -1,3 +1,5 @@
+mod internal;
+
 extern crate config;
 extern crate hashicorp_vault;
 extern crate postgres;
