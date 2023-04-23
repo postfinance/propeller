@@ -11,6 +11,12 @@
   </i>
 </p>
 
+<p align="center">
+  <a href="https://github.com/postfinance/propeller/actions/workflows/build.yml">
+    <img src="https://github.com/postfinance/propeller/actions/workflows/build.yml/badge.svg" alt="Rust Build" />
+  </a>
+</p>
+
 <hr>
 
 ## How does it work?
