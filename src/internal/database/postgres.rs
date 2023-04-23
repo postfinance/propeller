@@ -10,28 +10,30 @@ pub(crate) struct PostgresClient {
 
 fn create_user(username: &str, password: &str, client: &mut Client) {
     match client.execute("CREATE USER $1 WITH PASSWORD '$2'", &[&username, &password]) {
-        Ok(res) => println!("User '{}' successfully created", username),
+        Ok(_) => println!("User '{}' successfully created", username),
         Err(err) => {
             eprintln!("Failed to create user '{}': {}", username, err);
+            exit(1)
         }
     }
 }
 
 fn grant_role(username: &str, role: &str, client: &mut Client) {
     match client.execute("GRANT $1 TO $2", &[&role, &username]) {
-        Ok(res) => println!("Role '{}' successfully granted to '{}'", role, username),
+        Ok(_) => println!("Role '{}' successfully granted to '{}'", role, username),
         Err(err) => {
             eprintln!(
                 "Failed to grant role '{}' to user '{}': {}",
                 role, username, err
             );
+            exit(1)
         }
     }
 }
 
 fn drop_user(username: &str, client: &mut Client) {
     match client.execute("DROP USER $1", &[&username]) {
-        Ok(res) => println!("User '{}' successfully dropped", username),
+        Ok(_) => println!("User '{}' successfully dropped", username),
         Err(err) => {
             eprintln!("Failed to drop user '{}': {}", username, err);
         }
@@ -60,7 +62,6 @@ impl DatabaseClient for PostgresClient {
             &[&prefix],
         );
 
-        // Example code to query PostgreSQL and retrieve existing users
         let mut existing_users = Vec::new();
 
         match result {
@@ -71,10 +72,7 @@ impl DatabaseClient for PostgresClient {
                 }
             }
             Err(err) => {
-                println!(
-                    "Failed to retrieve existing users from PostgreSQL database: {}",
-                    err
-                );
+                println!("Failed to retrieve existing users: {}", err);
             }
         }
 

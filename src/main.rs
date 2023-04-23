@@ -1,21 +1,20 @@
-mod internal;
-
 extern crate config;
 extern crate hashicorp_vault;
 
 use std::fs::File as FsFile;
 use std::process::exit;
 
-use crate::internal::database::postgres::PostgresClient;
-use crate::internal::database::{DatabaseClient, DatabaseConfig};
-
 use config::Config;
 use config::File;
 use hashicorp_vault::client::VaultClient;
 use rand::distributions::{Alphanumeric, DistString};
-use reqwest::blocking::Client as HttpClient;
-use reqwest::header::HeaderMap;
 use serde_json::json;
+
+use crate::internal::argocd::{ArgoCDClient, ArgoCDConfig};
+use crate::internal::database::{DatabaseClient, DatabaseConfig};
+use crate::internal::database::postgres::PostgresClient;
+
+mod internal;
 
 fn generate_username(prefix: &str, length: usize) -> String {
     let random_part = Alphanumeric.sample_string(&mut rand::thread_rng(), length);
@@ -53,32 +52,6 @@ fn write_to_vault(
     Ok(())
 }
 
-fn trigger_argocd_sync(config: &Config) -> Result<(), Box<dyn std::error::Error>> {
-    // TODO: Could be [argocd] block
-    let argocd_api_url = config.get_string("argocd_url")?;
-    let argocd_namespace = config.get_string("argocd_namespace")?;
-    let argocd_token = config.get_string("argocd_token")?;
-    let sync_url = format!(
-        "{}/api/v1/applications/{}/sync",
-        argocd_api_url, argocd_namespace
-    );
-
-    // Set headers for the ArgoCD API request
-    let mut headers = HeaderMap::new();
-    headers.insert(
-        "Authorization",
-        format!("Bearer {}", argocd_token).parse().unwrap(),
-    );
-    headers.insert("Content-Type", "application/json".parse().unwrap());
-
-    // Create a reqwest client and send a POST request to trigger the namespace sync
-    // TODO: Use one client through whole lifecycle
-    let client = HttpClient::new();
-    let response = client.post(&sync_url).headers(headers).send()?;
-
-    Ok(())
-}
-
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Check if ".propellerrc" file exists
     let config_path = ".propellerrc";
@@ -91,8 +64,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // TODO: use `ConfigBuilder` instead
     config.merge(File::with_name(&config_path))?;
 
-    let mut client = PostgresClient::new(&DatabaseConfig::new(config.get_string("database_url")?));
+    // TODO: Could be [postgres] block
+    let mut postgres =
+        PostgresClient::new(&DatabaseConfig::new(config.get_string("database_url")?));
     let mut existing_users: Vec<String> = Vec::new();
+
+    // TODO: Could be [argocd] block
+    let mut argocd = ArgoCDClient::new(&ArgoCDConfig::new(
+        config.get_string("argocd_url")?,
+        config.get_string("argocd_namespace")?,
+        config.get_string("argocd_token")?,
+    ));
 
     let username_map = config.get_array("secrets")?; // Read username map from configuration
     for secret in username_map {
@@ -109,7 +91,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let role = secret_config.get("role").unwrap().to_string();
         let secret_path = secret_config.get("vault_path").unwrap().to_string();
 
-        for existing_username in client.get_existing_users(&prefix)? {
+        for existing_username in postgres.get_existing_users(&prefix)? {
             existing_users.push(existing_username);
         }
 
@@ -120,7 +102,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let password = generate_random_password(12); // Generate a random password with 12 characters
         println!("Generated password for prefix '{}': {}", prefix, password);
 
-        client.create_user_and_assign_role(&username, &password, &role)?;
+        postgres.create_user_and_assign_role(&username, &password, &role)?;
         match write_to_vault(&username, &password, &secret_path, &config) {
             Ok(()) => {
                 println!(
@@ -134,11 +116,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    trigger_argocd_sync(&config)?;
+    argocd.sync_namespace()?;
 
     // Delete users from PostgreSQL database if any existing users were found
     if !existing_users.is_empty() {
-        client.drop_users(existing_users);
+        postgres.drop_users(existing_users);
     }
 
     Ok(())
