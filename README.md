@@ -1,5 +1,5 @@
 <h1 align="center">
-  propeller - Automated database secret rotation
+  propeller - automated database secret rotations.
 </h1>
 
 <p align="center">
@@ -37,4 +37,4 @@ Now, how would you rotate the database secrets (e.g. username/password) without 
 
 That's it. Zero downtime secret rotation ✔️
 
-**Note:** We're only supporting [PostgreSQL](https://www.postgresql.org/) right now.
+**Note:** It's only supporting [PostgreSQL](https://www.postgresql.org/) right now.
