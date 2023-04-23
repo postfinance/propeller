@@ -1,12 +1,26 @@
+extern crate config;
 extern crate hashicorp_vault;
 extern crate postgres;
-extern crate config;
 
-use hashicorp_vault::client::VaultClient;
-use postgres::{Client, NoTls};
-use serde_json::json;
 use config::Config;
 use config::File;
+use hashicorp_vault::client::VaultClient;
+use postgres::{Client, NoTls};
+use rand::distributions::{Alphanumeric, DistString};
+use serde_json::json;
+
+/**
+ * **Note:** In principle, all RNGs in Rand implementing CryptoRng are suitable as a source of
+ * randomness for generating passwords (if they are properly seeded), but it is more conservative to
+ * only use randomness directly from the operating system via the getrandom crate, or the
+ * corresponding bindings of a crypto library.
+ *
+ * Source: https://rust-random.github.io/rand/rand/distributions/struct.Alphanumeric.html#passwords.
+ */
+fn generate_random_password(length: usize) -> String {
+    let password = Alphanumeric.sample_string(&mut rand::thread_rng(), length);
+    password
+}
 
 fn create_user(username: &str, password: &str, config: &Config) -> Result<(), Box<dyn std::error::Error>> {
     let database_url = config.get_string("database_url")?;
@@ -41,13 +55,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     std::io::stdin().read_line(&mut username)?;
     let username = username.trim();
 
-    println!("Enter password: ");
-    let mut password = String::new();
-    std::io::stdin().read_line(&mut password)?;
-    let password = password.trim();
+    let password = generate_random_password(12); // Generate a random password with 12 characters
+    println!("Generated password: {}", password);
 
-    create_user(username, password, &config)?;
-    write_to_vault(username, password, &config)?;
+    create_user(username, &password, &config)?;
+    write_to_vault(username, &password, &config)?;
 
     Ok(())
 }
