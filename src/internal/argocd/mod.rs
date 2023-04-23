@@ -3,6 +3,9 @@ use std::collections::HashMap;
 use reqwest::blocking::Client as HttpClient;
 use reqwest::header::{HeaderMap, HeaderName};
 
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub(crate) struct ArgoCDConfig {
     api_url: String,
     namespace: String,

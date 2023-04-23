@@ -1,5 +1,10 @@
+use serde::{Deserialize, Serialize};
+
+use crate::internal::database::postgres::PostgresClient;
+
 pub(crate) mod postgres;
 
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub(crate) struct DatabaseConfig {
     url: String,
 }
