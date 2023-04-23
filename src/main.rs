@@ -8,6 +8,7 @@ use hashicorp_vault::client::VaultClient;
 use postgres::{Client, NoTls};
 use rand::distributions::{Alphanumeric, DistString};
 use serde_json::json;
+use std::fs::File as FsFile;
 
 /**
  * **Note:** In principle, all RNGs in Rand implementing CryptoRng are suitable as a source of
@@ -46,9 +47,15 @@ fn write_to_vault(username: &str, password: &str, config: &Config) -> Result<(),
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Load configuration from rc file
+    // Check if ".propellerrc" file exists
+    let config_path = ".propellerrc";
+    if !FsFile::open(&config_path).is_ok() {
+        return Err(format!("Configuration file '{}' not found", &config_path).into());
+    }
+
+    // Load configuration from ".propellerrc" file
     let mut config = Config::default();
-    config.merge(File::with_name("config"))?; // Replace with your rc file name
+    config.merge(File::with_name(&config_path))?;
 
     println!("Enter username: ");
     let mut username = String::new();
