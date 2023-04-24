@@ -63,7 +63,10 @@ impl VaultClient {
 fn read_existing_secret(secret_path: &str, client: &mut HashiCorpVaultClient<TokenData>) -> String {
     let secret = match client.get_secret(secret_path) {
         Ok(secret) => {
-            println!("Existing secret successfully read from '{}'", secret_path);
+            println!(
+                "✅ Existing secret successfully read from '{}'",
+                secret_path
+            );
             secret
         }
         Err(err) => {
@@ -80,7 +83,7 @@ fn write_secret(
     client: &mut HashiCorpVaultClient<TokenData>,
 ) {
     match client.set_secret(secret_path, secret_data.to_string()) {
-        Ok(_) => println!("Secret successfully written to '{}'", secret_path),
+        Ok(_) => println!("✅ Secret successfully written to '{}'", secret_path),
         Err(err) => {
             eprintln!("🛑 Failed to write secret to '{}': {}", secret_path, err);
             exit(1)

@@ -65,7 +65,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )?;
     }
 
-    argocd.sync_namespace()?;
+    argocd.rollout_namespace()?;
 
     // Delete users from PostgreSQL database if any existing users were found
     if !existing_users.is_empty() {
