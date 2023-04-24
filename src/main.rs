@@ -2,15 +2,12 @@ extern crate confy;
 extern crate hashicorp_vault;
 extern crate serde_derive;
 
-use std::fs::File as FsFile;
-use std::process::exit;
-
 use rand::distributions::{Alphanumeric, DistString};
 
-use crate::internal::argocd::{ArgoCDClient, ArgoCDConfig};
+use crate::internal::argocd::ArgoCDClient;
 use crate::internal::database::postgres::PostgresClient;
-use crate::internal::database::{DatabaseClient, DatabaseConfig};
-use crate::internal::vault::{VaultClient, VaultConfig};
+use crate::internal::database::DatabaseClient;
+use crate::internal::vault::VaultClient;
 use crate::internal::Config;
 
 mod internal;
@@ -33,8 +30,9 @@ fn generate_random_password(length: usize) -> String {
     password
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let config: Config = confy::load("propeller", None)?;
+fn main() {
+    let config: Config =
+        confy::load("propeller", None).expect("🛑 Failed to load propeller configuration!");
 
     let mut argocd = ArgoCDClient::new(&config.argocd);
     let mut postgres = PostgresClient::new(&config.database);
@@ -45,32 +43,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for secret in config.secrets {
         let prefix = secret.prefix;
 
-        for existing_username in postgres.get_existing_users(&prefix)? {
+        for existing_username in postgres.get_existing_users(&prefix) {
             existing_users.push(existing_username);
         }
 
         let username = generate_username(&prefix, secret.username_random_part_length);
         println!("Generated username for prefix '{}': {}", prefix, username);
 
-        let password = generate_random_password(12); // Generate a random password with 12 characters
+        let password = generate_random_password(12);
         println!("Generated password for prefix '{}': {}", prefix, password);
 
-        postgres.create_user_and_assign_role(&username, &password, &secret.role)?;
+        postgres.create_user_and_assign_role(&username, &password, &secret.role);
         vault.update_username_and_password(
             username.as_str(),
             secret.username_key.as_str(),
             password.as_str(),
             secret.password_key.as_str(),
             secret.vault_path.as_str(),
-        )?;
+        );
     }
 
-    argocd.sync_namespace()?;
+    argocd.rollout_namespace();
 
-    // Delete users from PostgreSQL database if any existing users were found
     if !existing_users.is_empty() {
-        postgres.drop_users(existing_users)?;
+        postgres.drop_users(existing_users);
     }
-
-    Ok(())
 }

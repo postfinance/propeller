@@ -3,7 +3,7 @@
 </h1>
 
 <p align="center">
-  <img src="img/logo.png" alt="propeller-logo" width="120px" height="120px" style="border-radius: 50%;" />
+  <img src="img/logo-circle.png" alt="propeller-logo" width="120px" height="120px" style="border-radius: 50%;" />
   <br />
   <i>
     propeller is a secret rotation tool for applications running in Kubernetes,
