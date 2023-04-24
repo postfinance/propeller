@@ -3,9 +3,8 @@ use std::process::exit;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use hashicorp_vault::url::quirks::username;
 use reqwest::blocking::{Client as HttpClient, Client};
-use reqwest::header::{HeaderMap, HeaderName};
+use reqwest::header::HeaderMap;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 
@@ -38,11 +37,15 @@ impl ArgoCDClient {
         let mut headers = HashMap::new();
         headers.insert(
             "Authorization".to_string(),
-            format!("Bearer {}", argo_cd_config.token).parse().unwrap(),
+            format!("Bearer {}", argo_cd_config.token)
+                .parse()
+                .expect("🛑 Failed to configure ArgoCD Authentication!"),
         );
         headers.insert(
             "Content-Type".to_string(),
-            "application/json".parse().unwrap(),
+            "application/json"
+                .parse()
+                .expect("🛑 Failed to configure the ArgoCD client!"),
         );
 
         ArgoCDClient {
@@ -53,42 +56,28 @@ impl ArgoCDClient {
         }
     }
 
-    pub(crate) fn rollout_namespace(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+    pub(crate) fn rollout_namespace(&mut self) {
         sync_namespace(
             self.api_url.as_str(),
             self.namespace.as_str(),
             &self.client,
-            HeaderMap::try_from(&self.headers)?,
-        )?;
+            HeaderMap::try_from(&self.headers).expect("🛑 An unexpected error occurred while creating the ArgoCD synchronisation request!"),
+        );
 
         wait_for_rollout(self.api_url.as_str(), self.namespace.as_str(), &self.client);
-
-        Ok(())
     }
 }
 
-fn sync_namespace(
-    api_url: &str,
-    namespace: &str,
-    client: &Client,
-    headers: HeaderMap,
-) -> Result<(), Box<dyn std::error::Error>> {
+fn sync_namespace(api_url: &str, namespace: &str, client: &Client, headers: HeaderMap) {
     let sync_endpoint = format!("{}/api/v1/applications/{}/sync", api_url, namespace);
 
-    let response = match client
-        .post(&sync_endpoint)
-        .headers(HeaderMap::try_from(&headers)?)
-        .send()
-    {
-        Ok(response) => response,
-        Err(err) => {
-            eprintln!(
-                "🛑 Error while triggering synchronisation of namespace '{}': {}",
-                namespace, err
-            );
-            exit(1)
-        }
-    };
+    let response = client.post(&sync_endpoint).headers(headers).send().expect(
+        format!(
+            "🛑 Failed to trigger the synchronisation of namespace '{}'!",
+            namespace
+        )
+        .as_str(),
+    );
 
     match response.status() {
         StatusCode::OK => {
@@ -97,13 +86,11 @@ fn sync_namespace(
                 namespace
             )
         }
-        (_) => {
+        _ => {
             eprintln!("🛑 Failed to synchronise namespace '{}'", namespace);
             exit(1);
         }
     }
-
-    Ok(())
 }
 
 #[derive(Debug, Deserialize)]
@@ -124,12 +111,14 @@ struct ArgoCDApplicationResponse {
 fn wait_for_rollout(api_url: &str, namespace: &str, client: &Client) {
     let rollout_endpoint = format!("{}/api/v1/applications/{}", api_url, namespace);
 
+    // TODO: Make configurable
     let timeout = Duration::from_secs(60);
+    // TODO: Make configurable
     let sleep_time = Duration::from_secs(5);
     let start_time = Instant::now();
 
     loop {
-        if (Instant::now().duration_since(start_time) >= timeout) {
+        if Instant::now().duration_since(start_time) >= timeout {
             eprintln!(
                 "🛑 Timeout reached waiting for rollout of namespace '{}' to finish",
                 namespace
@@ -137,24 +126,21 @@ fn wait_for_rollout(api_url: &str, namespace: &str, client: &Client) {
             exit(1);
         }
 
-        let response = match client.get(&rollout_endpoint).send() {
-            Ok(response) => response,
-            Err(err) => {
-                eprintln!(
-                    "🛑 Failed to wait for rollout of namespace '{}': {}",
-                    namespace, err
-                );
-                exit(1)
-            }
-        };
+        let response = client.get(&rollout_endpoint).send().expect(
+            format!(
+                "🛑 Failed to wait for rollout of namespace '{}'!",
+                namespace
+            )
+            .as_str(),
+        );
 
-        if (response.status() != StatusCode::OK) {
+        if response.status() != StatusCode::OK {
             eprintln!("🛑 Failed to request rollout status of namespace '{}' - server returned http status {}", namespace, response.status());
             thread::sleep(sleep_time);
             continue;
         }
 
-        let rollout_response: ArgoCDApplicationResponse = response.json()?;
+        let rollout_response: ArgoCDApplicationResponse = response.json().expect("🛑 ArgoCD returned an unexpected non-JSON body when requesting application information!");
         let rollout_status = &rollout_response.status.health.status;
 
         println!(
@@ -162,10 +148,15 @@ fn wait_for_rollout(api_url: &str, namespace: &str, client: &Client) {
             rollout_status, namespace
         );
 
-        if (rollout_status == "Healthy") {
-            return;
+        if rollout_status != "Healthy" {
+            break;
         } else {
             thread::sleep(sleep_time);
         }
     }
+
+    println!(
+        "✅ Secret change successfully rolled out to namespace '{}'",
+        namespace
+    )
 }

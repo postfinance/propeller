@@ -1,7 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-use crate::internal::database::postgres::PostgresClient;
-
 pub(crate) mod postgres;
 
 #[derive(Debug, Serialize, Deserialize, Default)]
@@ -19,15 +17,7 @@ impl DatabaseConfig {
 
 pub(crate) trait DatabaseClient {
     fn new(database_config: &DatabaseConfig) -> Self;
-    fn get_existing_users(
-        &mut self,
-        prefix: &str,
-    ) -> Result<Vec<String>, Box<dyn std::error::Error>>;
-    fn create_user_and_assign_role(
-        &mut self,
-        username: &str,
-        password: &str,
-        role: &str,
-    ) -> Result<(), Box<dyn std::error::Error>>;
-    fn drop_users(&mut self, users: Vec<String>) -> Result<(), Box<dyn std::error::Error>>;
+    fn get_existing_users(&mut self, prefix: &str) -> Vec<String>;
+    fn create_user_and_assign_role(&mut self, username: &str, password: &str, role: &str);
+    fn drop_users(&mut self, users: Vec<String>);
 }
