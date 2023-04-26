@@ -8,6 +8,8 @@ use reqwest::header::HeaderMap;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 
+use crate::CLI_ARGS;
+
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub(crate) struct ArgoCDConfig {
     api_url: String,
@@ -57,23 +59,39 @@ impl ArgoCDClient {
     }
 
     pub(crate) fn rollout_namespace(&mut self) {
+        if CLI_ARGS.dry_run {
+            println!("🧪 The ArgoCD synchronization would now start");
+            return;
+        } else {
+            println!("✅ Perform ArgoCD rollout")
+        }
+
         sync_namespace(
             self.api_url.as_str(),
             self.namespace.as_str(),
             &self.client,
-            HeaderMap::try_from(&self.headers).expect("🛑 An unexpected error occurred while creating the ArgoCD synchronisation request!"),
+            HeaderMap::try_from(&self.headers).expect("🛑 An unexpected error occurred while creating the ArgoCD synchronization request!"),
         );
 
         wait_for_rollout(self.api_url.as_str(), self.namespace.as_str(), &self.client);
+
+        println!(
+            "✅ Secret change successfully rolled out to namespace '{}'",
+            self.namespace
+        )
     }
 }
 
 fn sync_namespace(api_url: &str, namespace: &str, client: &Client, headers: HeaderMap) {
     let sync_endpoint = format!("{}/api/v1/applications/{}/sync", api_url, namespace);
 
+    if CLI_ARGS.debug || CLI_ARGS.verbose {
+        println!("🔎 Synchronizing ArgoCD namespace: {}", sync_endpoint);
+    }
+
     let response = client.post(&sync_endpoint).headers(headers).send().expect(
         format!(
-            "🛑 Failed to trigger the synchronisation of namespace '{}'!",
+            "🛑 Failed to trigger the synchronization of namespace '{}'!",
             namespace
         )
         .as_str(),
@@ -81,13 +99,15 @@ fn sync_namespace(api_url: &str, namespace: &str, client: &Client, headers: Head
 
     match response.status() {
         StatusCode::OK => {
-            println!(
-                "✅ Namespace '{}' synchronisation successfully triggered",
-                namespace
-            )
+            if CLI_ARGS.verbose {
+                println!(
+                    "👀 Namespace '{}' synchronization successfully triggered",
+                    namespace
+                )
+            }
         }
         _ => {
-            eprintln!("🛑 Failed to synchronise namespace '{}'", namespace);
+            eprintln!("🛑 Failed to synchronize namespace '{}'", namespace);
             exit(1);
         }
     }
@@ -111,11 +131,22 @@ struct ArgoCDApplicationResponse {
 fn wait_for_rollout(api_url: &str, namespace: &str, client: &Client) {
     let rollout_endpoint = format!("{}/api/v1/applications/{}", api_url, namespace);
 
+    if CLI_ARGS.debug || CLI_ARGS.verbose {
+        println!("🔎 Wait for ArgoCD rollout '{}' to complete", namespace);
+    }
+
     // TODO: Make configurable
     let timeout = Duration::from_secs(60);
     // TODO: Make configurable
     let sleep_time = Duration::from_secs(5);
     let start_time = Instant::now();
+
+    if CLI_ARGS.verbose {
+        println!(
+            "👀 Timeout: {:?} s, time in between retries: {:?} s",
+            timeout, sleep_time
+        )
+    }
 
     loop {
         if Instant::now().duration_since(start_time) >= timeout {
@@ -143,20 +174,21 @@ fn wait_for_rollout(api_url: &str, namespace: &str, client: &Client) {
         let rollout_response: ArgoCDApplicationResponse = response.json().expect("🛑 ArgoCD returned an unexpected non-JSON body when requesting application information!");
         let rollout_status = &rollout_response.status.health.status;
 
-        println!(
-            "Checking status of rollout '{}' in namespace '{}'",
-            rollout_status, namespace
-        );
+        if CLI_ARGS.debug || CLI_ARGS.verbose {
+            println!(
+                "🔎 Checking status of rollout '{}' in namespace '{}'",
+                rollout_status, namespace
+            );
+        }
 
         if rollout_status != "Healthy" {
             break;
         } else {
+            if CLI_ARGS.verbose {
+                println!("👀 Rollout was '{}' - not healthy!", rollout_status)
+            }
+
             thread::sleep(sleep_time);
         }
     }
-
-    println!(
-        "✅ Secret change successfully rolled out to namespace '{}'",
-        namespace
-    )
 }

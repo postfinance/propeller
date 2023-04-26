@@ -27,7 +27,7 @@ The idea is actually very simple. Imagine having a running application in [Kuber
 access a database to store some information in it. We're also assuming three more things:
 
 * All access information is stored in [HashiCorp Vault](https://www.hashicorp.com/products/vault) secrets
-* You're using [ArgoCD](https://argo-cd.readthedocs.io/en/stable/) for namespace synchronisation
+* You're using [ArgoCD](https://argo-cd.readthedocs.io/en/stable/) for namespace synchronization
 * Your ArgoCD synchronization includes secrets from HashiCorp Vault
     * e.g. using [the `vault_sync` plugin](https://github.com/postfinance/kubectl-vault_sync)
 

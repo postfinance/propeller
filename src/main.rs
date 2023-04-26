@@ -1,38 +1,25 @@
-extern crate confy;
 extern crate hashicorp_vault;
+extern crate lazy_static;
 extern crate serde_derive;
 
-use rand::distributions::{Alphanumeric, DistString};
+use clap::Parser;
+use lazy_static::lazy_static;
 
 use crate::internal::argocd::ArgoCDClient;
+use crate::internal::config::{load_config, Args};
 use crate::internal::database::postgres::PostgresClient;
 use crate::internal::database::DatabaseClient;
+use crate::internal::random::{generate_random_password, generate_username};
 use crate::internal::vault::VaultClient;
-use crate::internal::Config;
 
 mod internal;
 
-fn generate_username(prefix: &str, length: usize) -> String {
-    let random_part = Alphanumeric.sample_string(&mut rand::thread_rng(), length);
-    format!("{}{}", prefix, random_part)
-}
-
-/**
- * **Note:** In principle, all RNGs in Rand implementing CryptoRng are suitable as a source of
- * randomness for generating passwords (if they are properly seeded), but it is more conservative to
- * only use randomness directly from the operating system via the getrandom crate, or the
- * corresponding bindings of a crypto library.
- *
- * Source: https://rust-random.github.io/rand/rand/distributions/struct.Alphanumeric.html#passwords.
- */
-fn generate_random_password(length: usize) -> String {
-    let password = Alphanumeric.sample_string(&mut rand::thread_rng(), length);
-    password
+lazy_static! {
+    pub(crate) static ref CLI_ARGS: Args = Args::parse();
 }
 
 fn main() {
-    let config: Config =
-        confy::load("propeller", None).expect("🛑 Failed to load propeller configuration!");
+    let config = load_config();
 
     let mut argocd = ArgoCDClient::new(&config.argocd);
     let mut postgres = PostgresClient::new(&config.database);
@@ -67,5 +54,9 @@ fn main() {
 
     if !existing_users.is_empty() {
         postgres.drop_users(existing_users);
+    } else {
+        if CLI_ARGS.debug || CLI_ARGS.verbose {
+            println!("🔎 No existing users present, will not cleanup");
+        }
     }
 }
