@@ -1,17 +1,20 @@
 extern crate hashicorp_vault;
 extern crate serde_derive;
 
+use clap::Parser;
+
 use crate::internal::argocd::ArgoCDClient;
-use crate::internal::config::load_config;
-use crate::internal::database::postgres::PostgresClient;
+use crate::internal::config::{Args, load_config};
 use crate::internal::database::DatabaseClient;
+use crate::internal::database::postgres::PostgresClient;
 use crate::internal::random::{generate_random_password, generate_username};
 use crate::internal::vault::VaultClient;
 
 mod internal;
 
 fn main() {
-    let config = load_config();
+    let args = Args::parse();
+    let config = load_config(Some(args.config_path.as_str()));
 
     let mut argocd = ArgoCDClient::new(&config.argocd);
     let mut postgres = PostgresClient::new(&config.database);
