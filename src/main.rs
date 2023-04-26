@@ -1,20 +1,25 @@
 extern crate hashicorp_vault;
+extern crate lazy_static;
 extern crate serde_derive;
 
 use clap::Parser;
+use lazy_static::lazy_static;
 
 use crate::internal::argocd::ArgoCDClient;
-use crate::internal::config::{Args, load_config};
-use crate::internal::database::DatabaseClient;
+use crate::internal::config::{load_config, Args};
 use crate::internal::database::postgres::PostgresClient;
+use crate::internal::database::DatabaseClient;
 use crate::internal::random::{generate_random_password, generate_username};
 use crate::internal::vault::VaultClient;
 
 mod internal;
 
+lazy_static! {
+    pub(crate) static ref CLI_ARGS: Args = Args::parse();
+}
+
 fn main() {
-    let args = Args::parse();
-    let config = load_config(Some(args.config_path.as_str()));
+    let config = load_config();
 
     let mut argocd = ArgoCDClient::new(&config.argocd);
     let mut postgres = PostgresClient::new(&config.database);
@@ -49,5 +54,9 @@ fn main() {
 
     if !existing_users.is_empty() {
         postgres.drop_users(existing_users);
+    } else {
+        if CLI_ARGS.debug || CLI_ARGS.verbose {
+            println!("🔎 No existing users present, will not cleanup");
+        }
     }
 }

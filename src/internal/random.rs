@@ -1,8 +1,17 @@
 use rand::distributions::{Alphanumeric, DistString};
 
+use crate::CLI_ARGS;
+
 pub(crate) fn generate_username(prefix: &str, length: usize) -> String {
     let random_part = Alphanumeric.sample_string(&mut rand::thread_rng(), length);
-    format!("{}{}", prefix, random_part)
+
+    let username = format!("{}{}", prefix, random_part);
+
+    if CLI_ARGS.debug || CLI_ARGS.verbose {
+        println!("🔎 Generated random username: {}", username);
+    }
+
+    username
 }
 
 /**
@@ -15,5 +24,10 @@ pub(crate) fn generate_username(prefix: &str, length: usize) -> String {
  */
 pub(crate) fn generate_random_password(length: usize) -> String {
     let password = Alphanumeric.sample_string(&mut rand::thread_rng(), length);
+
+    if CLI_ARGS.verbose {
+        println!("👀 Generated random password: {}", password);
+    }
+
     password
 }
