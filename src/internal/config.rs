@@ -27,6 +27,10 @@ pub(crate) struct Args {
     /// Path to the configuration file
     #[arg(short, long)]
     pub(crate) config_path: String,
+
+    /// The workflow to use; either exchange or rotate
+    #[arg(short, long, default_value = "exchange")]
+    pub(crate) workflow: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Default)]

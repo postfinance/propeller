@@ -3,3 +3,4 @@ pub(crate) mod config;
 pub(crate) mod database;
 pub(crate) mod random;
 pub(crate) mod vault;
+pub(crate) mod workflow;
