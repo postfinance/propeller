@@ -1,11 +1,11 @@
 use crate::internal::argocd::ArgoCDClient;
+use crate::internal::config::Secret;
 use crate::internal::database::postgres::PostgresClient;
 use crate::internal::database::DatabaseClient;
 use crate::internal::random::{generate_random_password, generate_username};
 use crate::internal::vault::VaultClient;
 use crate::internal::workflow::Workflow;
 use crate::CLI_ARGS;
-use crate::internal::config::Secret;
 
 pub(crate) struct RotateWorkflow {
     argocd: ArgoCDClient,
@@ -22,7 +22,7 @@ impl Workflow for RotateWorkflow {
         };
     }
 
-    fn sanitize(&mut self, secrets: Vec<Secret>) ->Vec<Secret>{
+    fn sanitize(&mut self, secrets: Vec<Secret>) -> Vec<Secret> {
         secrets
     }
 
