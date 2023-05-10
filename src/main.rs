@@ -6,14 +6,14 @@ use clap::Parser;
 use lazy_static::lazy_static;
 
 use crate::internal::argocd::ArgoCDClient;
-use crate::internal::config::{Args, load_config, Secret};
-use crate::internal::database::DatabaseClient;
+use crate::internal::config::{load_config, Args, Secret};
 use crate::internal::database::postgres::PostgresClient;
+use crate::internal::database::DatabaseClient;
 use crate::internal::vault::VaultClient;
 use crate::internal::workflow;
-use crate::internal::workflow::{Workflow, WorkflowKind};
 use crate::internal::workflow::exchange::ExchangeWorkflow;
 use crate::internal::workflow::rotate::RotateWorkflow;
+use crate::internal::workflow::{Workflow, WorkflowKind};
 
 mod internal;
 

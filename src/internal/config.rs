@@ -36,9 +36,12 @@ pub(crate) struct Args {
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub(crate) struct Secret {
     pub(crate) password_key: String,
+    pub(crate) password_2_key: String,
     pub(crate) prefix: String,
     pub(crate) role: String,
     pub(crate) username_key: String,
+    pub(crate) username_2_key: String,
+    // TODO: This should be a global property
     pub(crate) username_random_part_length: usize,
     pub(crate) vault_path: String,
 }

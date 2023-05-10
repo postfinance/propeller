@@ -63,6 +63,17 @@ impl DatabaseClient for PostgresClient {
         grant_role(username, role, client);
     }
 
+    fn update_user_password(&mut self, username: &str, new_password: &str) {
+        if CLI_ARGS.dry_run {
+            println!("🧪 Would update password of user '{}'", username);
+            return;
+        }
+
+        let client = &mut self.client;
+
+        update_user_password(username, new_password, client);
+    }
+
     fn drop_users(&mut self, users: Vec<String>) {
         if CLI_ARGS.dry_run {
             println!("🧪 Would drop {} now unused users", users.len());
@@ -100,6 +111,23 @@ fn grant_role(username: &str, role: &str, client: &mut Client) {
 
     if CLI_ARGS.verbose {
         println!("👀 Role '{}' successfully granted to '{}'", role, username);
+    }
+}
+
+fn update_user_password(username: &str, new_password: &str, client: &mut Client) {
+    if CLI_ARGS.debug || CLI_ARGS.verbose {
+        println!("🔎 Update password of user '{}'", username);
+    }
+
+    client
+        .execute(
+            "ALTER USER $1 WITH PASSWORD '$2';",
+            &[&username, &new_password],
+        )
+        .expect(format!("🛑 Failed to update password of user '{}'!", username).as_str());
+
+    if CLI_ARGS.verbose {
+        println!("👀 Password of user '{}' successfully updated", username);
     }
 }
 

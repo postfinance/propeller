@@ -39,6 +39,7 @@ impl Workflow for RotateWorkflow {
             let username = generate_username(&prefix, secret.username_random_part_length);
             println!("Generated username for prefix '{}': {}", prefix, username);
 
+            // TODO: Length from config
             let password = generate_random_password(12);
             println!("Generated password for prefix '{}': {}", prefix, password);
 

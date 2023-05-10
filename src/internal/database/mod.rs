@@ -19,5 +19,6 @@ pub(crate) trait DatabaseClient {
     fn new(database_config: &DatabaseConfig) -> Self;
     fn get_existing_users(&mut self, prefix: &str) -> Vec<String>;
     fn create_user_and_assign_role(&mut self, username: &str, password: &str, role: &str);
+    fn update_user_password(&mut self, username: &str, password: &str);
     fn drop_users(&mut self, users: Vec<String>);
 }

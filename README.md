@@ -44,11 +44,11 @@ Have a look at the workflow descriptions. That is it, already. Zero downtime sec
 #### Exchange
 
 1. Detect the currently active user based on the values in HashiCorp Vault
-2. Update the password of the passive user
-3. Push the access information to a secret in HashiCorp Vault
-4. Trigger an application rollout using ArgoCD, updating the active user
+2. Exchange the usernames of the active/passive user, update the password of the passive (now active) user
+3. Push the updated access information to a secret in HashiCorp Vault
+4. Trigger an application rollout using ArgoCD, exchanging the active user
 5. Change the password of the (now) passive user
-6. Push the access information to another secret in HashiCorp Vault
+6. Push the updated access information again into a secret in HashiCorp Vault
 
 ##### Prerequisites
 
@@ -61,17 +61,19 @@ The database grants, roles and users listed in the following table are required.
 | `application_a`   | An "application runtime user" with an initial password.                  | `GRANT application_dml to application_a` | 
 | `application_b`   | Another "application runtime user" with an initial password.             | `GRANT application_dml to application_b` | 
 
-It is also recommended to use the following HashiCorp Vault secret structure.
+It is also recommended to use a HashiCorp Vault secret similar to the one below.
 
 ```json
 {
   "database.active.username": "application_a",
   "database.active.password": "MY_PASSWORD",
   "database.passive.username": "application_b",
-  "database.passive.password": "ANOTHER_PASSWORD",
-  "database.bench.password": ""
+  "database.passive.password": "ANOTHER_PASSWORD"
 }
 ```
+
+Note that it would be more secure to use another secret (e.g. `database.bench.password`) to store the last valid
+password in between steps 2 and 5 in order to guarantee rollback-compatibility. This is currently not transactional!
 
 ##### Configuration
 
