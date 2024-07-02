@@ -39,7 +39,7 @@ jobs:
           override: true
           components: rustfmt, clippy
       - name: Use Cache
-        uses: Swatinem/rust-cache@v1
+        uses: Swatinem/rust-cache@v2
       - name: Install cargo-bump
         uses: actions-rs/cargo@v1
         with:
