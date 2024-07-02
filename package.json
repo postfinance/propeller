@@ -1,0 +1,34 @@
+{
+  "name": "propeller",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Automated database secret rotation.",
+  "homepage": "https://github.com/postfinance/propeller#readme",
+  "bugs": {
+    "url": "https://github.com/postfinance/propeller/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/postfinance/propeller.git"
+  },
+  "license": "Apache-2.0",
+  "author": "PostFinance AG",
+  "scripts": {
+    "ci:wait-for-vault": "wait-on --timeout 60s tcp:8200",
+    "prepare": "husky",
+    "prettier": "prettier \"{,.github/workflows/,dev/}*.{md,js,json,yml}\"",
+    "prettier:check": "npm run prettier -- --check",
+    "prettier:format": "npm run prettier -- --write"
+  },
+  "devDependencies": {
+    "@commitlint/config-conventional": "^19.2.2",
+    "@semantic-release/exec": "^6.0.3",
+    "@semantic-release/github": "^10.0.7",
+    "commitlint": "^19.3.0",
+    "husky": "^9.0.11",
+    "lint-staged": "^15.2.7",
+    "prettier": "^3.3.2",
+    "prettier-plugin-packagejson": "^2.5.0",
+    "wait-on": "^7.2.0"
+  }
+}

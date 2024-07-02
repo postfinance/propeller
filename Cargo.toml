@@ -1,0 +1,12 @@
+[package]
+name = "propeller"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+clap = { version = "4.5.8", features = ["derive"] }
+vaultrs = "0.7.2"
+serde = { version = "1.0.203", features = ["derive"] }
+serde_yaml = "0.9.34+deprecated"
+lazy_static = "1.5.0"
+tokio = { version = "1.38.0", features = ["macros", "rt"] }

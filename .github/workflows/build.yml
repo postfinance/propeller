@@ -1,0 +1,107 @@
+name: CLI Pipeline
+
+on:
+  push:
+    branches-ignore:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  HUSKY: 0
+  RUST_TOOLCHAIN: stable
+  TOOLCHAIN_PROFILE: minimal
+
+jobs:
+  build:
+    name: 'Rust Build'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: ${{ env.TOOLCHAIN_PROFILE }}
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          override: true
+          components: rustfmt, clippy
+      - name: Use Cache
+        uses: Swatinem/rust-cache@v1
+      - name: cargo fmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
+      - name: cargo clippy
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+      #    args: -- -D warnings
+      - name: Unit- and Integration-Tests
+        uses: actions-rs/cargo@v1
+        env:
+          RUST_TEST_THREADS: 1
+        with:
+          command: test
+      - name: Build Binary
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --verbose
+      - name: Archive Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli
+          path: target/release/propeller
+  test:
+    name: 'Integration Test CLI'
+    needs: build
+    runs-on: ubuntu-latest
+    services:
+      vault:
+        image: hashicorp/vault:1.17.1
+        ports:
+          - 8200:8200
+        options: --cap-add=IPC_LOCK
+        env:
+          VAULT_DEV_ROOT_TOKEN_ID: 'root-token'
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          name: cli
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.15.0
+          cache: 'npm'
+      - name: Install node.js packages
+        run: npm ci
+      - name: Wait for Vault
+        run: npm run ci:wait-for-vault
+      - name: Download Binary
+        uses: actions/download-artifact@v4
+      - name: Run integration tests
+        run: |
+          chmod 755 ./cli/propeller
+          ./cli/propeller init-vault -c dev/config.yml
+        env:
+          VAULT_TOKEN: 'root-token'
+  check:
+    name: 'Resources Validation'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.15.0
+          cache: 'npm'
+      - name: Install node.js packages
+        run: npm ci
+      - name: Check Format of Resources
+        run: npm run prettier:format

@@ -1,0 +1,22 @@
+bug:
+  - head-branch: ['^fix', '^bugfix', 'fix']
+
+ci/cd:
+  - changed-files:
+      - any-glob-to-any-file:
+        - '.github/**/*'
+        - '*.js'
+
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+        - 'Cargo.*'
+        - 'package*.json'
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+        - '*.md'
+
+feature:
+  - head-branch: ['^feat', 'feature']

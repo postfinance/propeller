@@ -1,0 +1,49 @@
+version: '3.8'
+
+name: 'propeller'
+
+services:
+  # PostgreSQL database for Vault
+  postgres-vault:
+    image: postgres:12.19-alpine3.20
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: vault
+      POSTGRES_USER: vault
+      POSTGRES_PASSWORD: vault_password # This is for development purposes only!
+    volumes:
+      - postgresql:/var/lib/postgresql/data
+
+  # PostgreSQL database for application
+  postgres-demo:
+    image: postgres:12.19-alpine3.20
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: demo
+      POSTGRES_USER: demo
+      POSTGRES_PASSWORD: demo_password # This is for development purposes only!
+    ports:
+      - '5432:5432'
+    volumes:
+      - demo-data:/var/lib/postgresql/data
+
+  # Vault server
+  vault:
+    image: hashicorp/vault:1.17.1
+    restart: unless-stopped
+    depends_on:
+      - postgres-vault
+    ports:
+      - '8200:8200' # Vault UI
+    environment:
+      - VAULT_ADDR=http://localhost:8200
+      - DATABASE_DRIVER=postgres
+      - DATABASE_URL=postgres://vault:vault_password@postgres:5432/vault
+    volumes:
+      - vault-data:/vault/data
+
+# Volumes for persistence (optional, comment out if not needed)
+volumes:
+  postgresql:
+  demo-data:
+  vault-data:
