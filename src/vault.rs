@@ -1,5 +1,5 @@
 use std::env;
-
+use log::info;
 use serde::{Deserialize, Serialize};
 use tokio::runtime::{Builder, Runtime};
 use vaultrs::client::{VaultClient, VaultClientSettingsBuilder};
@@ -39,6 +39,8 @@ impl Vault {
 
     pub(crate) fn init_secret_path(&mut self) {
         // TODO: Theoretically it would be possible to check if anything exists in this path already - exit if so.
+
+        info!("Initializing secret path");
 
         let vault_structure = VaultStructure {
             postgresql_active_user: "TBD".to_string(),
