@@ -1,6 +1,6 @@
-use std::env;
 use log::info;
 use serde::{Deserialize, Serialize};
+use std::env;
 use tokio::runtime::{Builder, Runtime};
 use vaultrs::client::{VaultClient, VaultClientSettingsBuilder};
 use vaultrs::kv2;

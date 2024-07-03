@@ -6,10 +6,12 @@ use config::Config;
 use crate::cli::{CliArgs, Command};
 use crate::config::read_config;
 use crate::vault::Vault;
+use crate::workflow::switch_active_user;
 
 mod cli;
 mod config;
 mod vault;
+mod workflow;
 
 fn main() {
     init_logger();
@@ -22,7 +24,11 @@ fn main() {
             let mut vault: Vault = Vault::connect(&config);
             vault.init_secret_path()
         }
-        Command::Rotate(_) => {}
+        Command::Rotate(rotate_args) => {
+            let config: Config = read_config(rotate_args.base.config_path);
+            let vault: Vault = Vault::connect(&config);
+            switch_active_user(&config, &vault)
+        }
     }
 }
 
