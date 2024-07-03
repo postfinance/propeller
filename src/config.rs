@@ -1,6 +1,6 @@
+use log::debug;
 use serde::Deserialize;
 use std::{fs::File, io::Read, path::PathBuf};
-use log::debug;
 
 #[derive(Deserialize, Debug)]
 pub(crate) struct Config {

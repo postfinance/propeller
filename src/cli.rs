@@ -40,7 +40,14 @@ pub(crate) struct BaseArgs {
 pub(crate) struct RotateArgs {
     #[clap(flatten)] // Inherit arguments from BaseArgs
     pub(crate) base: BaseArgs,
-    // Additional arguments for rotation (if any) can be added here.
+
+    /// Whether the CLI should write a recovery log (contains sensitive information!) or not
+    #[clap(short, long, default_value = "20")]
+    pub(crate) password_length: i8,
+
+    /// Whether the CLI should write a recovery log (contains sensitive information!) or not
+    #[clap(short, long)]
+    pub(crate) write_recovery_log: bool,
 }
 
 /// Arguments specific to the `init-vault` subcommand.
