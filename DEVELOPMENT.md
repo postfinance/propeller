@@ -100,7 +100,7 @@ Cargo will automatically discover and execute the tests defined within the proje
 To run the CLI without compiling the binary each time, execute:
 
 ```shell
-cargo run -- init-vault -c dev/config.yml
+VAULT_TOKEN=root-token cargo run -- init-vault -c dev/config.yml
 ```
 
 This will also pick up a development configuration perfectly fitting for the previously installed [development environment](#environment-setup).
