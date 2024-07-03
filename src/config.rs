@@ -1,5 +1,6 @@
 use serde::Deserialize;
 use std::{fs::File, io::Read, path::PathBuf};
+use log::debug;
 
 #[derive(Deserialize, Debug)]
 pub(crate) struct Config {
@@ -19,6 +20,9 @@ pub(crate) struct PostgresConfig {
 }
 
 pub(crate) fn read_config(config_path: PathBuf) -> Config {
+    let path_string = config_path.clone().into_os_string().into_string().unwrap();
+    debug!("Reading config at: {path_string}");
+
     let mut config_data: String = String::new();
     let mut config_file: File = File::open(config_path).expect("Failed to read configuration file");
     config_file
