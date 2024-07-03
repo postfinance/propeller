@@ -12,6 +12,7 @@ const VAULT_TOKEN: &'static str = "VAULT_TOKEN";
 #[derive(Debug, Deserialize, Serialize)]
 struct VaultStructure {
     postgresql_active_user: String,
+    postgresql_active_user_password: String,
     postgresql_user_1: String,
     postgresql_user_1_password: String,
     postgresql_user_2: String,
@@ -37,8 +38,11 @@ impl Vault {
     }
 
     pub(crate) fn init_secret_path(&mut self) {
+        // TODO: Theoretically it would be possible to check if anything exists in this path already - exit if so.
+
         let vault_structure = VaultStructure {
             postgresql_active_user: "TBD".to_string(),
+            postgresql_active_user_password: "TBD".to_string(),
             postgresql_user_1: "TBD".to_string(),
             postgresql_user_1_password: "TBD".to_string(),
             postgresql_user_2: "TBD".to_string(),
