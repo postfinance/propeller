@@ -68,7 +68,7 @@ _Never_ include your `VAULT_TOKEN` directly in the configuration file or commit 
 
 ### Initializing Vault for Secret Management
 
-The propeller init-vault command is the first step in setting up your database secret rotation process.
+The `propeller init-vault` command is the first step in setting up your database secret rotation process.
 It creates the necessary structure within your Vault instance to securely store and manage your PostgreSQL credentials.
 
 **Command Usage:**
@@ -82,12 +82,15 @@ After running the command, the specified Vault path will contain a JSON secret w
 ```json
 {
   "postgresql_active_user": "TBD",
+  "postgresql_active_user_password": "TBD",
   "postgresql_user_1": "TBD",
   "postgresql_user_1_password": "TBD",
   "postgresql_user_2": "TBD",
   "postgresql_user_2_password": "TBD"
 }
 ```
+
+**Note that any previously present secrets in this path will be lost in the process!**
 
 The "TBD" placeholders indicate that these values _must_ be filled once with the initial values before continuing the rotation process.
 
