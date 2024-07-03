@@ -39,6 +39,7 @@ services:
       - VAULT_ADDR=http://localhost:8200
       - DATABASE_DRIVER=postgres
       - DATABASE_URL=postgres://vault:vault_password@postgres:5432/vault
+      - VAULT_DEV_ROOT_TOKEN_ID=root-token
     volumes:
       - vault-data:/vault/data
 

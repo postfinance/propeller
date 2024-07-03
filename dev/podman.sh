@@ -34,6 +34,7 @@ podman start vault || \
     -e VAULT_ADDR=http://localhost:8200 \
     -e DATABASE_DRIVER=postgres \
     -e DATABASE_URL=postgres://vault:vault_password@postgres-vault:5432/vault \
+    -e VAULT_DEV_ROOT_TOKEN_ID=root-token \
     -p 8200:8200 \
     --restart on-failure:3 \
     hashicorp/vault:1.17.1
