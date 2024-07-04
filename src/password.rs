@@ -1,7 +1,7 @@
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 
-fn generate_random_password(length: usize) -> String {
+pub(crate) fn generate_random_password(length: usize) -> String {
     let mut rng = thread_rng();
     let password: String = (0..length)
         .map(|_| rng.sample(Alphanumeric) as char)
