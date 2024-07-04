@@ -1,8 +1,11 @@
 use log::info;
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::env;
 use tokio::runtime::{Builder, Runtime};
+use vaultrs::api::kv2::responses::SecretVersionMetadata;
 use vaultrs::client::{VaultClient, VaultClientSettingsBuilder};
+use vaultrs::error::ClientError;
 use vaultrs::kv2;
 
 use crate::config::{Config, VaultConfig};
@@ -10,13 +13,13 @@ use crate::config::{Config, VaultConfig};
 const VAULT_TOKEN: &'static str = "VAULT_TOKEN";
 
 #[derive(Debug, Deserialize, Serialize)]
-struct VaultStructure {
-    postgresql_active_user: String,
-    postgresql_active_user_password: String,
-    postgresql_user_1: String,
-    postgresql_user_1_password: String,
-    postgresql_user_2: String,
-    postgresql_user_2_password: String,
+pub(crate) struct VaultStructure {
+    pub(crate) postgresql_active_user: String,
+    pub(crate) postgresql_active_user_password: String,
+    pub(crate) postgresql_user_1: String,
+    pub(crate) postgresql_user_1_password: String,
+    pub(crate) postgresql_user_2: String,
+    pub(crate) postgresql_user_2_password: String,
 }
 
 pub(crate) struct Vault {
@@ -51,19 +54,33 @@ impl Vault {
             postgresql_user_2_password: "TBD".to_string(),
         };
 
-        self.rt
-            .block_on(kv2::set(
-                &self.vault_client,
-                "secret",
-                &*self.vault_config.path,
-                &vault_structure,
-            ))
+        self.write_secret(&vault_structure)
             .expect("Failed to create initial Vault structure");
 
         println!(
             "Successfully initialized Vault path '{}'",
             self.vault_config.path
         )
+    }
+
+    pub(crate) fn read_secret<D: DeserializeOwned>(&mut self) -> Result<D, ClientError> {
+        self.rt.block_on(kv2::read(
+            &self.vault_client,
+            "secret",
+            &*self.vault_config.path,
+        ))
+    }
+
+    pub(crate) fn write_secret(
+        &mut self,
+        vault_structure: &VaultStructure,
+    ) -> Result<SecretVersionMetadata, ClientError> {
+        self.rt.block_on(kv2::set(
+            &self.vault_client,
+            "secret",
+            &*self.vault_config.path,
+            &vault_structure,
+        ))
     }
 }
 

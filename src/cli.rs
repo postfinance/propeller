@@ -17,13 +17,11 @@ pub(crate) enum Command {
     /// Initialize a Vault path with the necessary structure for secret management.
     ///
     /// This command prepares the Vault backend for subsequent secret rotation operations.
-    #[command(arg_required_else_help(true))] // Require arguments for this subcommand
     InitVault(InitVaultArgs),
 
     /// Rotate PostgreSQL database secrets.
     ///
     /// This command orchestrates the process of generating new secrets, updating the database, and storing the new secrets in Vault.
-    #[command(arg_required_else_help(true))] // Require arguments for this subcommand
     Rotate(RotateArgs),
 }
 
@@ -43,7 +41,7 @@ pub(crate) struct RotateArgs {
 
     /// Whether the CLI should write a recovery log (contains sensitive information!) or not
     #[clap(short, long, default_value = "20")]
-    pub(crate) password_length: i8,
+    pub(crate) password_length: usize,
 
     /// Whether the CLI should write a recovery log (contains sensitive information!) or not
     #[clap(short, long)]
