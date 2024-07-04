@@ -14,7 +14,6 @@
   "license": "Apache-2.0",
   "author": "PostFinance AG",
   "scripts": {
-    "ci:wait-for-vault": "wait-on --timeout 60s tcp:8200",
     "prepare": "husky",
     "prettier": "prettier \"{,.github/workflows/,dev/}*.{md,js,json,yml}\"",
     "prettier:check": "npm run prettier -- --check",
@@ -28,7 +27,6 @@
     "husky": "^9.0.11",
     "lint-staged": "^15.2.7",
     "prettier": "^3.3.2",
-    "prettier-plugin-packagejson": "^2.5.0",
-    "wait-on": "^7.2.0"
+    "prettier-plugin-packagejson": "^2.5.0"
   }
 }

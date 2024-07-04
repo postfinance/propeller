@@ -66,19 +66,12 @@ fn update_passive_user_password(secret: &mut VaultStructure, new_password: Strin
     }
 }
 
-mod test {
+mod tests {
     use super::*;
 
     #[test]
-    fn test_switch_active_user_user1_active() {
-        let mut secret = VaultStructure {
-            postgresql_active_user: "user1".to_string(),
-            postgresql_active_user_password: "password1".to_string(),
-            postgresql_user_1: "user1".to_string(),
-            postgresql_user_1_password: "password1".to_string(),
-            postgresql_user_2: "user2".to_string(),
-            postgresql_user_2_password: "password2".to_string(),
-        };
+    fn switch_active_user_user1_active() {
+        let mut secret: VaultStructure = create_vault_structure_active_user_1();
 
         switch_active_user(&mut secret);
 
@@ -87,15 +80,8 @@ mod test {
     }
 
     #[test]
-    fn test_switch_active_user_user2_active() {
-        let mut secret = VaultStructure {
-            postgresql_active_user: "user2".to_string(),
-            postgresql_active_user_password: "password2".to_string(),
-            postgresql_user_1: "user1".to_string(),
-            postgresql_user_1_password: "password1".to_string(),
-            postgresql_user_2: "user2".to_string(),
-            postgresql_user_2_password: "password2".to_string(),
-        };
+    fn switch_active_user_user2_active() {
+        let mut secret: VaultStructure = create_vault_structure_active_user_2();
 
         switch_active_user(&mut secret);
 
@@ -104,15 +90,8 @@ mod test {
     }
 
     #[test]
-    fn test_update_passive_user_password_user1_active() {
-        let mut secret = VaultStructure {
-            postgresql_active_user: "user1".to_string(),
-            postgresql_active_user_password: "password1".to_string(),
-            postgresql_user_1: "user1".to_string(),
-            postgresql_user_1_password: "password1".to_string(),
-            postgresql_user_2: "user2".to_string(),
-            postgresql_user_2_password: "password2".to_string(),
-        };
+    fn update_passive_user_password_user1_active() {
+        let mut secret: VaultStructure = create_vault_structure_active_user_1();
 
         let new_password = "new_password".to_string();
 
@@ -124,15 +103,8 @@ mod test {
     }
 
     #[test]
-    fn test_update_passive_user_password_user2_active() {
-        let mut secret = VaultStructure {
-            postgresql_active_user: "user2".to_string(),
-            postgresql_active_user_password: "password2".to_string(),
-            postgresql_user_1: "user1".to_string(),
-            postgresql_user_1_password: "password1".to_string(),
-            postgresql_user_2: "user2".to_string(),
-            postgresql_user_2_password: "password2".to_string(),
-        };
+    fn update_passive_user_password_user2_active() {
+        let mut secret: VaultStructure = create_vault_structure_active_user_2();
 
         let new_password = "new_password".to_string();
 
@@ -141,5 +113,29 @@ mod test {
         assert_eq!(secret.postgresql_active_user, "user2");
         assert_eq!(secret.postgresql_active_user_password, "password2");
         assert_eq!(secret.postgresql_user_1_password, new_password);
+    }
+
+    fn create_vault_structure_active_user_1() -> VaultStructure {
+        let mut secret = VaultStructure {
+            postgresql_active_user: "user1".to_string(),
+            postgresql_active_user_password: "password1".to_string(),
+            postgresql_user_1: "user1".to_string(),
+            postgresql_user_1_password: "password1".to_string(),
+            postgresql_user_2: "user2".to_string(),
+            postgresql_user_2_password: "password2".to_string(),
+        };
+        secret
+    }
+
+    fn create_vault_structure_active_user_2() -> VaultStructure {
+        let mut secret = VaultStructure {
+            postgresql_active_user: "user2".to_string(),
+            postgresql_active_user_password: "password2".to_string(),
+            postgresql_user_1: "user1".to_string(),
+            postgresql_user_1_password: "password1".to_string(),
+            postgresql_user_2: "user2".to_string(),
+            postgresql_user_2_password: "password2".to_string(),
+        };
+        secret
     }
 }

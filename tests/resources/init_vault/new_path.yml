@@ -1,0 +1,5 @@
+postgres:
+  jdbc_url: 'jdbc:postgres://localhost:5432/demo'
+vault:
+  address: 'http://localhost:8200'
+  path: 'path/to/my/secret'

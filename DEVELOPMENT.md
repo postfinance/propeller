@@ -8,10 +8,11 @@ Before you start, ensure you have the following installed:
 
 - [Git](https://git-scm.com/downloads): For version control
   - Git LFS: For managing large files within the project
-- [Node.js](https://nodejs.org/en/download: For running certain project scripts (including dependency management)
+- [Node.js](https://nodejs.org/en/download): For running certain project scripts (including dependency management)
 - [`podman`](https://podman.io/docs/installation) or [Docker](https://www.docker.com/products/docker-desktop/): For containerization of the Vault instance and databases
+  - This is especially required for [integration testing](#running-tests)
 
-## Cloning the Repository
+## Preparing the Repository
 
 1. Clone the `propeller` project from GitHub:
 
@@ -52,7 +53,7 @@ npm ci --cache .npm
 - **A Vault instance:** For managing secrets
 
 Note that if using any of the below options, Vault will be accessible on http://localhost:8200.
-Extract the root token from the logs of the container.
+The root token for development is 'root-token'.
 
 ### Setting up with `podman`:
 
@@ -92,6 +93,8 @@ Cargo makes it easy to run the project's unit and integration tests:
 ```shell
 cargo tests
 ```
+
+**Note that the integration tests need active Vault and PostgreSQL connections, as described [here](#environment-setup).**
 
 Cargo will automatically discover and execute the tests defined within the project.
 
