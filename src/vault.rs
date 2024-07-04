@@ -83,12 +83,9 @@ fn get_vault_client(config: &Config) -> VaultClient {
 }
 
 mod test {
-    use std::env;
-
+    use super::*;
+    use crate::config::PostgresConfig;
     use vaultrs::client::Client;
-
-    use crate::config::{Config, PostgresConfig, VaultConfig};
-    use crate::vault::{get_vault_client, Vault, VAULT_TOKEN};
 
     #[test]
     fn test_vault_connect() {

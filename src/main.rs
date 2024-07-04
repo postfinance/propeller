@@ -10,6 +10,7 @@ use crate::workflow::switch_active_user;
 
 mod cli;
 mod config;
+mod password;
 mod vault;
 mod workflow;
 
