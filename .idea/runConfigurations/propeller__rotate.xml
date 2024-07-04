@@ -1,8 +1,10 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="Test propeller" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
-    <option name="command" value="test --workspace" />
+  <configuration default="false" name="propeller: rotate" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
+    <option name="command" value="run --package propeller --bin propeller -- rotate -c dev/config.yml" />
     <option name="workingDirectory" value="file://$PROJECT_DIR$" />
-    <envs />
+    <envs>
+      <env name="VAULT_TOKEN" value="root-token" />
+    </envs>
     <option name="emulateTerminal" value="true" />
     <option name="channel" value="DEFAULT" />
     <option name="requiredFeatures" value="true" />

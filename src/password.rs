@@ -10,11 +10,11 @@ pub(crate) fn generate_random_password(length: usize) -> String {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
 
     #[test]
-    fn test_password_length() {
+    fn password_length() {
         for length in vec![8, 16, 32] {
             let password = generate_random_password(length);
             assert_eq!(password.len(), length);
@@ -22,7 +22,7 @@ mod test {
     }
 
     #[test]
-    fn test_password_content() {
+    fn password_content() {
         let password = generate_random_password(10);
         assert!(password.chars().all(|c| c.is_alphanumeric()));
         assert!(password.chars().any(|c| c.is_lowercase()));

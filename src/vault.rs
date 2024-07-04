@@ -99,13 +99,13 @@ fn get_vault_client(config: &Config) -> VaultClient {
     vault_client
 }
 
-mod test {
+mod tests {
     use super::*;
     use crate::config::PostgresConfig;
     use vaultrs::client::Client;
 
     #[test]
-    fn test_vault_connect() {
+    fn successful_vault_connect() {
         let config = Config {
             postgres: PostgresConfig {
                 jdbc_url: "".to_string(),
@@ -125,7 +125,7 @@ mod test {
 
     #[test]
     #[should_panic(expected = "Missing VAULT_TOKEN environment variable")]
-    fn test_vault_connect_missing_token() {
+    fn vault_connect_missing_token() {
         let config = Config {
             postgres: PostgresConfig {
                 jdbc_url: "".to_string(),
@@ -141,7 +141,7 @@ mod test {
     }
 
     #[test]
-    fn test_get_vault_client() {
+    fn get_vault_client_returns_client() {
         let config = Config {
             postgres: PostgresConfig {
                 jdbc_url: "".to_string(),

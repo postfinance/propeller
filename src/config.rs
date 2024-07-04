@@ -32,3 +32,29 @@ pub(crate) fn read_config(config_path: PathBuf) -> Config {
 
     serde_yaml::from_str(&config_data).expect("Failed to parse configuration")
 }
+
+mod tests {
+    use super::*;
+
+    #[test]
+    #[should_panic(
+        expected = "Failed to read configuration file: 'tests/resources/config/non_existing.yml'"
+    )]
+    fn read_config_invalid_file() {
+        read_config(PathBuf::from("tests/resources/config/non_existing.yml"));
+    }
+
+    #[test]
+    #[should_panic(expected = "Failed to parse configuration: Error(\"missing field `postgres`")]
+    fn read_config_missing_postgresql() {
+        read_config(PathBuf::from(
+            "tests/resources/config/missing_postgresql.yml",
+        ));
+    }
+
+    #[test]
+    #[should_panic(expected = "Failed to parse configuration: Error(\"missing field `vault`")]
+    fn read_config_missing_vault() {
+        read_config(PathBuf::from("tests/resources/config/missing_vault.yml"));
+    }
+}

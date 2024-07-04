@@ -1,0 +1,2 @@
+postgres:
+  jdbc_url: 'jdbc:postgres://localhost:5432/demo'
