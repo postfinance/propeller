@@ -1,3 +1,3 @@
 vault:
   address: 'http://localhost:1234'
-  path: 'path/to/my/secret'
+  path: 'config/missing/postgresql'

@@ -19,6 +19,7 @@ podman start postgres-vault || \
 podman start postgres-demo || \
   podman run -d --name postgres-demo \
     -v "${DEMO_DATA_VOLUME}:/var/lib/postgresql/data" \
+    -v "$(dirname "$0")/postgres:/docker-entrypoint-initdb.d" \
     -e POSTGRES_DB=demo \
     -e POSTGRES_USER=demo \
     -e POSTGRES_PASSWORD=demo_password \

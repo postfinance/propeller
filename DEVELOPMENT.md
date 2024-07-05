@@ -52,8 +52,25 @@ npm ci --cache .npm
   - One to simulate the database of an application, used for secret rotation
 - **A Vault instance:** For managing secrets
 
-Note that if using any of the below options, Vault will be accessible on http://localhost:8200.
-The root token for development is 'root-token'.
+Two options are provided for setting up the environment, either using `podman` or `docker-compose`.
+Refer to the respective scripts ([`dev/podman.sh`](dev/podman.sh) and [`dev/docker-compose.yml`](dev/docker-compose.yml)) for detailed instructions.
+
+**Notes:**
+
+- If using any of these options, Vault will be accessible on http://localhost:8200.
+- The provided "root-token" is for development only. Use strong, unique tokens in production and follow best practices for Vault token management.
+- The demo database is initialized with sample users and credentials for demonstration purposes. After [having initialized Vault](#running-the-cli), you could configure these users for rotation, e.g. with the following secret value in `path/to/my/secret`:
+
+```json
+{
+  "postgresql_active_user": "user1",
+  "postgresql_active_user_password": "initialpw",
+  "postgresql_user_1": "user1",
+  "postgresql_user_1_password": "initialpw",
+  "postgresql_user_2": "user2",
+  "postgresql_user_2_password": "initialpw"
+}
+```
 
 ### Setting up with `podman`:
 

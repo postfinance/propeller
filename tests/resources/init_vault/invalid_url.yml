@@ -1,5 +1,7 @@
 postgres:
-  jdbc_url: 'jdbc:postgres://localhost:5432/demo'
+  host: 'localhost'
+  port: 5432
+  database: 'demo'
 vault:
   address: 'http://localhost:1234'
-  path: 'path/to/my/secret'
+  path: 'init/vault/invalid/url'

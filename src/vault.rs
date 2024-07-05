@@ -107,9 +107,7 @@ mod tests {
     #[test]
     fn successful_vault_connect() {
         let config = Config {
-            postgres: PostgresConfig {
-                jdbc_url: "".to_string(),
-            },
+            postgres: mock_postgres_config(),
             vault: VaultConfig {
                 address: "http://localhost:8200".to_string(),
                 path: "path/to/my/secret".to_string(),
@@ -127,9 +125,7 @@ mod tests {
     #[should_panic(expected = "Missing VAULT_TOKEN environment variable")]
     fn vault_connect_missing_token() {
         let config = Config {
-            postgres: PostgresConfig {
-                jdbc_url: "".to_string(),
-            },
+            postgres: mock_postgres_config(),
             vault: VaultConfig {
                 address: "http://localhost:8200".to_string(),
                 path: "path/to/my/secret".to_string(),
@@ -143,9 +139,7 @@ mod tests {
     #[test]
     fn get_vault_client_returns_client() {
         let config = Config {
-            postgres: PostgresConfig {
-                jdbc_url: "".to_string(),
-            },
+            postgres: mock_postgres_config(),
             vault: VaultConfig {
                 address: "http://localhost:8200".to_string(),
                 path: "path/to/my/secret".to_string(),
@@ -159,5 +153,13 @@ mod tests {
             vault_client.settings().address.to_string(),
             config.vault.address + "/"
         );
+    }
+
+    fn mock_postgres_config() -> PostgresConfig {
+        PostgresConfig {
+            host: "".to_string(),
+            port: 1234,
+            database: "".to_string(),
+        }
     }
 }

@@ -26,6 +26,7 @@ services:
       - '5432:5432'
     volumes:
       - demo-data:/var/lib/postgresql/data
+      - ./postgres:/docker-entrypoint-initdb.d
 
   # Vault server
   vault:
