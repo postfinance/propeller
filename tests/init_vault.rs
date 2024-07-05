@@ -23,25 +23,14 @@ fn init_vault_new_path() {
         .assert()
         .success()
         .stdout(contains(
-            "Successfully initialized Vault path 'path/to/my/secret'",
+            "Successfully initialized Vault path 'init/vault/new/path'",
         ));
 
     let client = Client::new();
-    let url = "http://localhost:8200/v1/secret/data/path/to/my/secret";
+    let url = "http://localhost:8200/v1/secret/data/init/vault/new/path";
 
     let rt: Runtime = create_tokio_runtime();
-
-    let response: Response = rt
-        .block_on(client.get(url).header("X-Vault-Token", "root-token").send())
-        .expect("Error receiving Vault data");
-
-    response
-        .error_for_status_ref()
-        .expect("Expected to reach Vault");
-
-    let json: Value = rt
-        .block_on(response.json())
-        .expect("Failed to convert Vault response to JSON");
+    let json = read_secret_as_json(client, url, rt);
 
     assert_json_value_equals(&json, "postgresql_active_user", "TBD");
     assert_json_value_equals(&json, "postgresql_active_user_password", "TBD");
@@ -69,6 +58,21 @@ fn create_tokio_runtime() -> Runtime {
         .enable_all()
         .build()
         .expect("Failed to build Vault connection")
+}
+
+fn read_secret_as_json(client: Client, url: &str, rt: Runtime) -> Value {
+    let response: Response = rt
+        .block_on(client.get(url).header("X-Vault-Token", "root-token").send())
+        .expect("Error receiving Vault data");
+
+    response
+        .error_for_status_ref()
+        .expect("Expected to reach Vault");
+
+    let json: Value = rt
+        .block_on(response.json())
+        .expect("Failed to convert Vault response to JSON");
+    json
 }
 
 fn assert_json_value_equals(json: &Value, key: &str, value: &str) {

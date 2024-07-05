@@ -38,7 +38,9 @@ The configuration file is in YAML format and has the following structure:
 
 ```yaml
 postgres:
-  jdbc_url: 'jdbc:postgres://localhost:5432/demo' # Replace with your database URL
+  host: 'localhost' # Replace with your database host
+  port: 5432 # Replace with your database port
+  database: 'demo' # Replace with your database
 vault:
   address: 'http://localhost:8200' # Replace with your Vault address
   path: 'path/to/my/secret' # Replace with the desired path in Vault

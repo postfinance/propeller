@@ -10,6 +10,7 @@ use crate::workflow::rotate_secrets_using_switch_method;
 
 mod cli;
 mod config;
+mod database;
 mod password;
 mod vault;
 mod workflow;

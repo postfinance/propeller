@@ -1,0 +1,2 @@
+CREATE USER user1 WITH PASSWORD 'initialpw';
+CREATE USER user2 WITH PASSWORD 'initialpw';

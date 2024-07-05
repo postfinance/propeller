@@ -19,6 +19,14 @@ jobs:
     name: 'Rust Build'
     runs-on: ubuntu-latest
     services:
+      postgres:
+        image: postgres:12.19-alpine3.20
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_DB: demo
+          POSTGRES_USER: demo
+          POSTGRES_PASSWORD: demo_password
       vault:
         image: hashicorp/vault:1.17.1
         ports:

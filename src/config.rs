@@ -16,7 +16,9 @@ pub(crate) struct VaultConfig {
 
 #[derive(Clone, Deserialize, Debug)]
 pub(crate) struct PostgresConfig {
-    pub(crate) jdbc_url: String,
+    pub(crate) host: String,
+    pub(crate) port: u16,
+    pub(crate) database: String,
 }
 
 pub(crate) fn read_config(config_path: PathBuf) -> Config {
