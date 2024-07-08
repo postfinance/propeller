@@ -1,0 +1,30 @@
+@startuml
+
+!theme vibrant
+
+skinparam component {
+    BackgroundColor<<propeller>> #004B5A
+}
+
+package "CI/CD Platform" {
+    component "<color:#white>CLI</color>" as prop1 << propeller >>
+}
+
+package Kubernetes {
+    component Application as app
+    component ArgoCD
+    component "Vault Sync (Job)" as vsync
+
+    component "<color:#white>Image</color>" as prop2 << propeller >>
+
+    ArgoCD ..> app: Manages
+    ArgoCD ..> vsync: Manages (//PreSync// hook)
+}
+
+database PostgreSQL as db
+component Vault
+
+app --> db: Store data
+vsync <--> Vault: Transfer secrets
+
+@enduml
