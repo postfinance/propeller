@@ -1,0 +1,76 @@
+@startuml
+
+!theme vibrant
+
+participant Propeller #004B5A
+participant Vault
+participant PostgreSQL
+participant ArgoCD
+participant Application
+
+note over Application: Application uses user 1
+
+activate Propeller
+
+Propeller -> Vault: Request active user
+activate Vault
+Vault --> Propeller: user 1
+deactivate Vault
+
+Propeller -> Propeller: Generate random password
+
+Propeller -> PostgreSQL: Rotate user 2 password
+activate PostgreSQL
+PostgreSQL --> Propeller: Success
+deactivate PostgreSQL
+
+Propeller -> Vault: Update user 2 password
+activate Vault
+Vault --> Propeller: Success
+deactivate Vault
+
+Propeller -> Vault: Switch active user to user 2
+activate Vault
+Vault --> Propeller: Success
+deactivate Vault
+
+Propeller -> ArgoCD: Trigger rollout
+activate ArgoCD
+ArgoCD -> Application: Sync
+activate Application
+ArgoCD --> Propeller: Success
+deactivate ArgoCD
+
+Application -> Vault: Request active user
+activate Vault
+Vault --> Application: user 2
+deactivate Vault
+
+Application -> PostgreSQL: Connect with user 2
+activate PostgreSQL
+PostgreSQL --> Application: Connection established
+deactivate PostgreSQL
+deactivate Application
+
+note over Application: Application uses user 2
+
+loop Poll until rollout complete or timeout
+Propeller -> ArgoCD: Request rollout status
+activate ArgoCD
+ArgoCD --> Propeller: Status (pending/success/failed)
+deactivate ArgoCD
+end
+
+Propeller -> PostgreSQL: Rotate user 1 password
+activate PostgreSQL
+PostgreSQL --> Propeller: Success
+deactivate PostgreSQL
+
+Propeller -> Vault: Update user 1 password
+activate Vault
+Vault --> Propeller: Success
+deactivate Vault
+
+deactivate Propeller
+
+@enduml
