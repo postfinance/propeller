@@ -11,6 +11,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::runtime::{Builder, Runtime};
 
+mod common;
+
 lazy_static! {
     static ref BIN_PATH: PathBuf = cargo_bin(env!("CARGO_PKG_NAME"));
 }
@@ -32,27 +34,59 @@ struct VaultSecretDTO {
 
 #[test]
 fn rotate_secrets() {
+    let vault_container = common::vault_container();
+
+    let vault_host = vault_container.get_host().unwrap();
+    let vault_port = vault_container.get_host_port_ipv4(8200).unwrap();
+
+    let postgres_container = common::postgres_container();
+
+    let postgres_host = postgres_container.get_host().unwrap().to_string();
+    let postgres_port = postgres_container
+        .get_host_port_ipv4(5432)
+        .unwrap()
+        .to_string();
+
     let http_client = Client::new();
-    let url = "http://localhost:8200/v1/secret/data/rotate/secrets";
+    let url = format!("http://{vault_host}:{vault_port}/v1/secret/data/rotate/secrets");
 
     let rt: Runtime = create_tokio_runtime();
 
-    reset_vault_secret_path(&http_client, url, &rt);
+    reset_vault_secret_path(&http_client, url.as_str(), &rt);
 
-    let mut postgres_client = connect_postgres_client("demo", "demo_password");
+    let mut postgres_client = connect_postgres_client(
+        postgres_host.as_str(),
+        postgres_port.as_str(),
+        "demo",
+        "demo_password",
+    );
     reset_role_initial_password(&mut postgres_client, "user1");
     reset_role_initial_password(&mut postgres_client, "user2");
 
     Command::new(&*BIN_PATH)
         .arg("rotate")
         .arg("-c")
-        .arg("tests/resources/rotate/secrets.yml")
+        .arg(common::write_string_to_tempfile(
+            format!(
+                // language=yaml
+                "
+postgres:
+  host: '{postgres_host}'
+  port: {postgres_port}
+  database: 'demo'
+vault:
+  address: 'http://{vault_host}:{vault_port}'
+  path: 'rotate/secrets'
+                "
+            )
+            .as_str(),
+        ))
         .env("VAULT_TOKEN", "root-token")
         .assert()
         .success()
         .stdout(contains("Successfully rotated all secrets"));
 
-    let json = read_secret_as_json(http_client, url, rt);
+    let json = read_secret_as_json(http_client, url.as_str(), rt);
 
     assert_eq!(
         json["data"]["data"]["postgresql_active_user"]
@@ -88,12 +122,16 @@ fn rotate_secrets() {
     );
 
     connect_postgres_client(
+        postgres_host.as_str(),
+        postgres_port.as_str(),
         "user1",
         json["data"]["data"]["postgresql_user_1_password"]
             .as_str()
             .unwrap(),
     );
     connect_postgres_client(
+        postgres_host.as_str(),
+        postgres_port.as_str(),
         "user2",
         json["data"]["data"]["postgresql_user_2_password"]
             .as_str()
@@ -103,16 +141,45 @@ fn rotate_secrets() {
 
 #[test]
 fn rotate_invalid_initialized_secret() {
+    let vault_container = common::vault_container();
+
+    let vault_host = vault_container.get_host().unwrap();
+    let vault_port = vault_container.get_host_port_ipv4(8200).unwrap();
+
+    let postgres_container = common::postgres_container();
+
+    let postgres_host = postgres_container.get_host().unwrap().to_string();
+    let postgres_port = postgres_container
+        .get_host_port_ipv4(5432)
+        .unwrap()
+        .to_string();
+
     let http_client = Client::new();
-    let url = "http://localhost:8200/v1/secret/data/rotate/invalid/initialized/secret";
+    let url = format!(
+        "http://{vault_host}:{vault_port}/v1/secret/data/rotate/invalid/initialized/secret"
+    );
 
     let rt: Runtime = create_tokio_runtime();
-    create_invalid_vault_secret_path(&http_client, url, &rt);
+    create_invalid_vault_secret_path(&http_client, url.as_str(), &rt);
 
     Command::new(&*BIN_PATH)
         .arg("rotate")
         .arg("-c")
-        .arg("tests/resources/rotate/invalid_initialized_secret.yml")
+        .arg(common::write_string_to_tempfile(
+            format!(
+                // language=yaml
+                "
+postgres:
+  host: '{postgres_host}'
+  port: {postgres_port}
+  database: 'demo'
+vault:
+  address: 'http://{vault_host}:{vault_port}'
+  path: 'rotate/invalid/initialized/secret'
+                "
+            )
+            .as_str(),
+        ))
         .env("VAULT_TOKEN", "root-token")
         .assert()
         .failure()
@@ -123,10 +190,37 @@ fn rotate_invalid_initialized_secret() {
 
 #[test]
 fn rotate_non_existing_secret() {
+    let vault_container = common::vault_container();
+
+    let vault_host = vault_container.get_host().unwrap();
+    let vault_port = vault_container.get_host_port_ipv4(8200).unwrap();
+
+    let postgres_container = common::postgres_container();
+
+    let postgres_host = postgres_container.get_host().unwrap().to_string();
+    let postgres_port = postgres_container
+        .get_host_port_ipv4(5432)
+        .unwrap()
+        .to_string();
+
     Command::new(&*BIN_PATH)
         .arg("rotate")
         .arg("-c")
-        .arg("tests/resources/rotate/non_existing_secret.yml")
+        .arg(common::write_string_to_tempfile(
+            format!(
+                // language=yaml
+                "
+postgres:
+  host: '{postgres_host}'
+  port: {postgres_port}
+  database: 'demo'
+vault:
+  address: 'http://{vault_host}:{vault_port}'
+  path: 'rotate/non/existing/path'
+                "
+            )
+            .as_str(),
+        ))
         .env("VAULT_TOKEN", "root-token")
         .assert()
         .failure()
@@ -183,9 +277,9 @@ fn write_vault_secret(client: &Client, url: &str, rt: &Runtime, initial_secret: 
     .expect("Error initializing Vault for 'rotate_secrets'");
 }
 
-fn connect_postgres_client(user: &str, password: &str) -> postgres::Client {
-    let mut postgres_client = postgres::Client::connect(
-        format!("host=localhost port=5432 dbname=demo user={user} password={password}").as_str(),
+fn connect_postgres_client(host: &str, port: &str, user: &str, password: &str) -> postgres::Client {
+    let postgres_client = postgres::Client::connect(
+        format!("host={host} port={port} dbname=demo user={user} password={password}").as_str(),
         NoTls,
     )
     .expect("Failed to build PostgreSQL connection");

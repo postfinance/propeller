@@ -9,16 +9,37 @@ use reqwest::{Client, Response};
 use serde_json::Value;
 use tokio::runtime::{Builder, Runtime};
 
+mod common;
+
 lazy_static! {
     static ref BIN_PATH: PathBuf = cargo_bin(env!("CARGO_PKG_NAME"));
 }
 
 #[test]
 fn init_vault_new_path() {
+    let vault_container = common::vault_container();
+
+    let vault_host = vault_container.get_host().unwrap();
+    let vault_port = vault_container.get_host_port_ipv4(8200).unwrap();
+
     Command::new(&*BIN_PATH)
         .arg("init-vault")
         .arg("-c")
-        .arg("tests/resources/init_vault/new_path.yml")
+        .arg(common::write_string_to_tempfile(
+            format!(
+                // language=yaml
+                "
+postgres:
+  host: 'localhost'
+  port: 5432
+  database: 'demo'
+vault:
+  address: 'http://{vault_host}:{vault_port}'
+  path: 'init/vault/new/path'
+"
+            )
+            .as_str(),
+        ))
         .env("VAULT_TOKEN", "root-token")
         .assert()
         .success()
@@ -27,10 +48,10 @@ fn init_vault_new_path() {
         ));
 
     let client = Client::new();
-    let url = "http://localhost:8200/v1/secret/data/init/vault/new/path";
+    let url = format!("http://{vault_host}:{vault_port}/v1/secret/data/init/vault/new/path");
 
     let rt: Runtime = create_tokio_runtime();
-    let json = read_secret_as_json(client, url, rt);
+    let json = read_secret_as_json(client, url.as_str(), rt);
 
     assert_json_value_equals(&json, "postgresql_active_user", "TBD");
     assert_json_value_equals(&json, "postgresql_active_user_password", "TBD");
@@ -42,6 +63,8 @@ fn init_vault_new_path() {
 
 #[test]
 fn init_vault_invalid_url() {
+    common::vault_container();
+
     Command::new(&*BIN_PATH)
         .arg("init-vault")
         .arg("-c")

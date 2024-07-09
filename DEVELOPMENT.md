@@ -111,9 +111,15 @@ Cargo makes it easy to run the project's unit and integration tests:
 cargo tests
 ```
 
-**Note that the integration tests need active Vault and PostgreSQL connections, as described [here](#environment-setup).**
+**Note that the integration tests make use of [testcontainers](https://testcontainers.com) in order to spin up ArgoCD, Vault and PostgreSQL.**
 
-Cargo will automatically discover and execute the tests defined within the project.
+#### A Note for Windows Users
+
+If testcontainers fail to connect to your Docker socket on Windows, add the below environment variable to the test command:
+
+```shell
+DOCKER_HOST=tcp://localhost:2375 cargo test
+```
 
 ### Running the CLI
 
