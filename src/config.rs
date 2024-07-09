@@ -35,6 +35,7 @@ pub(crate) fn read_config(config_path: PathBuf) -> Config {
     serde_yaml::from_str(&config_data).expect("Failed to parse configuration")
 }
 
+#[cfg(test)]
 mod tests {
     use super::*;
 

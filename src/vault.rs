@@ -99,6 +99,7 @@ fn get_vault_client(config: &Config) -> VaultClient {
     vault_client
 }
 
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::config::PostgresConfig;

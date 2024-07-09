@@ -1,7 +1,4 @@
-use std::fmt::format;
-
 use log::{debug, trace};
-use vaultrs::auth::userpass::user::update_password;
 
 use crate::cli::RotateArgs;
 use crate::config::Config;
@@ -90,9 +87,9 @@ fn update_passive_user_postgres_password(
     debug!("Successfully rotated PostgreSQL password of passive user");
 }
 
+#[cfg(test)]
 mod tests {
     use super::*;
-    use postgres::Client;
 
     #[test]
     fn switch_active_user_user1_active() {
