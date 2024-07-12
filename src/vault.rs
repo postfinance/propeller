@@ -10,7 +10,7 @@ use vaultrs::kv2;
 
 use crate::config::{Config, VaultConfig};
 
-const VAULT_TOKEN: &'static str = "VAULT_TOKEN";
+const VAULT_TOKEN: &str = "VAULT_TOKEN";
 
 #[derive(Debug, Deserialize, Serialize)]
 pub(crate) struct VaultStructure {
@@ -67,7 +67,7 @@ impl Vault {
         self.rt.block_on(kv2::read(
             &self.vault_client,
             "secret",
-            &*self.vault_config.path,
+            &self.vault_config.path,
         ))
     }
 
@@ -78,7 +78,7 @@ impl Vault {
         self.rt.block_on(kv2::set(
             &self.vault_client,
             "secret",
-            &*self.vault_config.path,
+            &self.vault_config.path,
             &vault_structure,
         ))
     }
