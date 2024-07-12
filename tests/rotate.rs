@@ -34,10 +34,7 @@ struct VaultSecretDTO {
 
 #[test]
 fn rotate_secrets() {
-    let vault_container = common::vault_container();
-
-    let vault_host = vault_container.get_host().unwrap();
-    let vault_port = vault_container.get_host_port_ipv4(8200).unwrap();
+    let k3s_container = common::k3s_container();
 
     let postgres_container = common::postgres_container();
 
@@ -46,6 +43,11 @@ fn rotate_secrets() {
         .get_host_port_ipv4(5432)
         .unwrap()
         .to_string();
+
+    let vault_container = common::vault_container();
+
+    let vault_host = vault_container.get_host().unwrap();
+    let vault_port = vault_container.get_host_port_ipv4(8200).unwrap();
 
     let http_client = Client::new();
     let url = format!("http://{vault_host}:{vault_port}/v1/secret/data/rotate/secrets");
@@ -141,11 +143,6 @@ vault:
 
 #[test]
 fn rotate_invalid_initialized_secret() {
-    let vault_container = common::vault_container();
-
-    let vault_host = vault_container.get_host().unwrap();
-    let vault_port = vault_container.get_host_port_ipv4(8200).unwrap();
-
     let postgres_container = common::postgres_container();
 
     let postgres_host = postgres_container.get_host().unwrap().to_string();
@@ -153,6 +150,11 @@ fn rotate_invalid_initialized_secret() {
         .get_host_port_ipv4(5432)
         .unwrap()
         .to_string();
+
+    let vault_container = common::vault_container();
+
+    let vault_host = vault_container.get_host().unwrap();
+    let vault_port = vault_container.get_host_port_ipv4(8200).unwrap();
 
     let http_client = Client::new();
     let url = format!(
