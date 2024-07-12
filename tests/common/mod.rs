@@ -2,10 +2,8 @@ use std::env::temp_dir;
 use std::fs::File;
 use std::io::Write;
 
-use testcontainers::{
-    core::{IntoContainerPort, WaitFor},
-    Container, GenericImage, ImageExt,
-};
+use testcontainers::{Container, ImageExt};
+use testcontainers_modules::hashicorp_vault::HashicorpVault;
 use testcontainers_modules::postgres::Postgres;
 use testcontainers_modules::testcontainers::runners::SyncRunner;
 
@@ -18,12 +16,8 @@ pub(crate) fn postgres_container() -> Container<Postgres> {
         .expect("PostgreSQL database started")
 }
 
-pub(crate) fn vault_container() -> Container<GenericImage> {
-    GenericImage::new("hashicorp/vault", "1.17.1")
-        .with_exposed_port(8200.tcp())
-        .with_wait_for(WaitFor::message_on_stdout(
-            "==> Vault server started! Log data will stream in below",
-        ))
+pub(crate) fn vault_container() -> Container<HashicorpVault> {
+    HashicorpVault::default()
         .with_env_var("VAULT_DEV_ROOT_TOKEN_ID", "root-token")
         .start()
         .expect("Vault started")
