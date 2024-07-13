@@ -30,7 +30,7 @@ jobs:
         with:
           node-version: 20.15.0
           cache: 'npm'
-      - name: Install node.js packages
+      - name: Install npm Packages
         run: npm ci
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1

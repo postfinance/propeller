@@ -42,6 +42,15 @@ jobs:
         with:
           command: clippy
           args: -- -D warnings
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.15.0
+          cache: 'npm'
+      - name: Install npm Packages
+        run: npm ci
+      - name: Generate Argo-CD Client Sources
+        run: npm run openapi:generate:argocd
       - name: Unit and Integration Tests
         uses: actions-rs/cargo@v1
         env:
@@ -70,7 +79,7 @@ jobs:
         with:
           node-version: 20.15.0
           cache: 'npm'
-      - name: Install node.js packages
+      - name: Install npm Packages
         run: npm ci
       - name: Check Format of Resources
         run: npm run prettier:format
