@@ -21,6 +21,8 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
       - name: Install stable Toolchain
         uses: actions-rs/toolchain@v1
         with:

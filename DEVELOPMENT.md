@@ -7,41 +7,56 @@ This guide will help you set up your development environment for the project.
 Before you start, ensure you have the following installed:
 
 - [Git](https://git-scm.com/downloads): For version control
-  - Git LFS: For managing large files within the project
+  - [Git LFS](https://git-lfs.com/): For managing large files within the project
 - [Node.js](https://nodejs.org/en/download): For running certain project scripts (including dependency management)
 - [`podman`](https://podman.io/docs/installation) or [Docker](https://www.docker.com/products/docker-desktop/): For containerization of the Vault instance and databases
   - This is especially required for [integration testing](#running-tests)
 
 ## Preparing the Repository
 
-1. Clone the `propeller` project from GitHub:
-
-```shell
-git clone git@github.com:postfinance/propeller.git
-```
-
-2. Navigate into the project directory:
-
-```
-cd propeller
-```
-
-3. Initialize Git Large File Storage (LFS):
+1. Make sure you have Git Large File Storage (LFS) installed beforehand:
 
 ```shell
 git lfs install
 git lfs fetch
 ```
 
-This ensures you have the large files needed by the project.
+This ensures that when cloning the repository later, large files needed by the project are cloned too.
 
-4. Install project dependencies (required if you're working with project resources):
+2. Clone the `propeller` project from GitHub:
+
+```shell
+git clone git@github.com:postfinance/propeller.git
+```
+
+3. Navigate into the project directory:
+
+```
+cd propeller
+```
+
+4. Initialize Git Submodules:
+
+```shell
+git submodule init
+git submodule update
+```
+
+The project is connected to [argoproj/argo-cd](https://github.com/argoproj/argo-cd) and thus includes some of its sources.
+
+5. Install project dependencies:
 
 ```shell
 npm ci --cache .npm
 ```
 
 **Note:** The --cache .npm option helps speed up subsequent installations.
+
+6. Generate ArgoCD client sources:
+
+```shell
+
+```
 
 ## Environment Setup
 
