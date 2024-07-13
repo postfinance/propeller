@@ -1,3 +1,6 @@
+argo_cd:
+  application: 'sut'
+  base_url: 'http://localhost:3100'
 vault:
-  address: 'http://localhost:1234'
+  base_url: 'http://localhost:1234'
   path: 'config/missing/postgresql'

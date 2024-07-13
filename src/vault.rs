@@ -1,4 +1,4 @@
-use log::info;
+use log::{debug, info};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::env;
@@ -30,6 +30,8 @@ pub(crate) struct Vault {
 
 impl Vault {
     pub(crate) fn connect(config: &Config) -> Vault {
+        debug!("Connecting to Vault at: {}", config.vault.base_url);
+
         Vault {
             vault_client: get_vault_client(config),
             vault_config: config.vault.clone(),
@@ -43,7 +45,7 @@ impl Vault {
     pub(crate) fn init_secret_path(&mut self) {
         // TODO: Theoretically it would be possible to check if anything exists in this path already - exit if so.
 
-        info!("Initializing secret path");
+        info!("Initializing secret path '{}'", self.vault_config.path);
 
         let vault_structure = VaultStructure {
             postgresql_active_user: "TBD".to_string(),
@@ -64,6 +66,8 @@ impl Vault {
     }
 
     pub(crate) fn read_secret<D: DeserializeOwned>(&mut self) -> Result<D, ClientError> {
+        info!("Reading secret from path '{}'", self.vault_config.path);
+
         self.rt.block_on(kv2::read(
             &self.vault_client,
             "secret",
@@ -75,6 +79,8 @@ impl Vault {
         &mut self,
         vault_structure: &VaultStructure,
     ) -> Result<SecretVersionMetadata, ClientError> {
+        info!("Writing secret to path '{}'", self.vault_config.path);
+
         self.rt.block_on(kv2::set(
             &self.vault_client,
             "secret",
@@ -89,7 +95,7 @@ fn get_vault_client(config: &Config) -> VaultClient {
 
     let vault_client: VaultClient = VaultClient::new(
         VaultClientSettingsBuilder::default()
-            .address(config.vault.address.clone())
+            .address(config.vault.base_url.clone())
             .token(vault_token)
             .build()
             .unwrap(),
@@ -102,15 +108,19 @@ fn get_vault_client(config: &Config) -> VaultClient {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::PostgresConfig;
+    use crate::config::{ArgoConfig, PostgresConfig};
     use vaultrs::client::Client;
 
     #[test]
     fn successful_vault_connect() {
         let config = Config {
+            argo_cd: ArgoConfig {
+                application: "sut".to_string(),
+                base_url: "http://localhost:3100".to_string(),
+            },
             postgres: mock_postgres_config(),
             vault: VaultConfig {
-                address: "http://localhost:8200".to_string(),
+                base_url: "http://localhost:8200".to_string(),
                 path: "path/to/my/secret".to_string(),
             },
         };
@@ -118,7 +128,7 @@ mod tests {
 
         let vault = Vault::connect(&config);
 
-        assert_eq!(vault.vault_config.address, config.vault.address);
+        assert_eq!(vault.vault_config.base_url, config.vault.base_url);
         assert_eq!(vault.vault_config.path, config.vault.path);
     }
 
@@ -126,9 +136,13 @@ mod tests {
     #[should_panic(expected = "Missing VAULT_TOKEN environment variable")]
     fn vault_connect_missing_token() {
         let config = Config {
+            argo_cd: ArgoConfig {
+                application: "sut".to_string(),
+                base_url: "http://localhost:3100".to_string(),
+            },
             postgres: mock_postgres_config(),
             vault: VaultConfig {
-                address: "http://localhost:8200".to_string(),
+                base_url: "http://localhost:8200".to_string(),
                 path: "path/to/my/secret".to_string(),
             },
         };
@@ -140,9 +154,13 @@ mod tests {
     #[test]
     fn get_vault_client_returns_client() {
         let config = Config {
+            argo_cd: ArgoConfig {
+                application: "sut".to_string(),
+                base_url: "http://localhost:3100".to_string(),
+            },
             postgres: mock_postgres_config(),
             vault: VaultConfig {
-                address: "http://localhost:8200".to_string(),
+                base_url: "http://localhost:8200".to_string(),
                 path: "path/to/my/secret".to_string(),
             },
         };
@@ -152,7 +170,7 @@ mod tests {
 
         assert_eq!(
             vault_client.settings().address.to_string(),
-            config.vault.address + "/"
+            config.vault.base_url + "/"
         );
     }
 

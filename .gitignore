@@ -220,4 +220,3 @@ dist
 
 # OpenAPI generator
 openapitools.json
-src/argo-cd

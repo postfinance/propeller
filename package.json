@@ -14,7 +14,8 @@
   "license": "Apache-2.0",
   "author": "PostFinance AG",
   "scripts": {
-    "openapi:generate:argocd": "openapi-generator-cli generate -i argo-cd/assets/swagger.json -g rust -o src/argo-cd",
+    "counterfact:argocd": "counterfact argo-cd/assets/swagger.json target/counterfact/argocd",
+    "openapi:generate:argocd": "openapi-generator-cli generate -i argo-cd/assets/swagger.json -g rust -o target/argo-cd",
     "prepare": "husky",
     "prettier": "prettier \"{,.github/workflows/,dev/}*.{md,js,json,yml}\"",
     "prettier:check": "npm run prettier -- --check",

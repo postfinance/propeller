@@ -34,7 +34,7 @@ postgres:
   port: 5432
   database: 'demo'
 vault:
-  address: 'http://{vault_host}:{vault_port}'
+  base_url: 'http://{vault_host}:{vault_port}'
   path: 'init/vault/new/path'
 "
             )
