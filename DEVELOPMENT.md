@@ -2,6 +2,13 @@
 
 This guide will help you set up your development environment for the project.
 
+**Contents:**
+
+- [Prerequisites](#prerequisites)
+- [Preparing the Repository](#preparing-the-repository)
+- [Environment Setup](#environment-setup)
+- [Building the Project](#building-the-project)
+
 ## Prerequisites
 
 Before you start, ensure you have the following installed:
@@ -51,12 +58,6 @@ npm ci --cache .npm
 ```
 
 **Note:** The --cache .npm option helps speed up subsequent installations.
-
-6. Generate ArgoCD client sources:
-
-```shell
-
-```
 
 ## Environment Setup
 

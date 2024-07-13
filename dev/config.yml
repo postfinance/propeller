@@ -1,7 +1,10 @@
+argo_cd:
+  application: 'sut'
+  base_url: 'http://localhost:3100'
 postgres:
   host: 'localhost'
   port: 5432
   database: 'demo'
 vault:
-  address: 'http://localhost:8200'
+  base_url: 'http://localhost:8200'
   path: 'path/to/my/secret'

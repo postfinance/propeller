@@ -1,13 +1,13 @@
 use clap::Parser;
 use env_logger::{Env, DEFAULT_WRITE_STYLE_ENV};
 
-use config::Config;
-
+use crate::argo_cd::ArgoCD;
 use crate::cli::{CliArgs, Command};
-use crate::config::read_config;
+use crate::config::{read_config, Config};
 use crate::vault::Vault;
 use crate::workflow::rotate_secrets_using_switch_method;
 
+mod argo_cd;
 mod cli;
 mod config;
 mod database;
@@ -28,8 +28,9 @@ fn main() {
         }
         Command::Rotate(rotate_args) => {
             let config: Config = read_config(rotate_args.base.config_path.clone());
+            let mut argo_cd: ArgoCD = ArgoCD::init(&config);
             let mut vault: Vault = Vault::connect(&config);
-            rotate_secrets_using_switch_method(&rotate_args, &config, &mut vault)
+            rotate_secrets_using_switch_method(&rotate_args, &config, &mut argo_cd, &mut vault)
         }
     }
 }

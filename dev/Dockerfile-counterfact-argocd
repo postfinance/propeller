@@ -1,0 +1,13 @@
+FROM node:22-alpine3.19
+
+CMD ["npx", "--no-install", "counterfact", "swagger.json", "api"]
+
+EXPOSE 3100
+
+WORKDIR /home/node/app
+
+COPY ../package.json /home/node/app/
+COPY ../package-lock.json /home/node/app/
+COPY ../argo-cd/assets/swagger.json /home/node/app/
+
+RUN npm ci --cache .npm --prefer-offline

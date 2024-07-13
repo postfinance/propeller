@@ -5,6 +5,14 @@ POSTGRESQL_VOLUME="postgresql"
 DEMO_DATA_VOLUME="demo-data"
 VAULT_DATA_VOLUME="vault-data"
 
+# Build & Start ArgoCD
+podman build -f dev/Dockerfile-counterfact-argocd -t propeller/counterfact-argocd .
+podman start counterfact-argocd ||
+  podman run -d --name counterfact-argocd \
+    -p 3100:3100 \
+    --restart on-failure:3 \
+    propeller/counterfact-argocd
+
 # Start Postgres for Vault
 podman start postgres-vault || \
   podman run -d --name postgres-vault \

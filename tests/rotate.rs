@@ -77,7 +77,7 @@ postgres:
   port: {postgres_port}
   database: 'demo'
 vault:
-  address: 'http://{vault_host}:{vault_port}'
+  base_url: 'http://{vault_host}:{vault_port}'
   path: 'rotate/secrets'
                 "
             )
@@ -176,7 +176,7 @@ postgres:
   port: {postgres_port}
   database: 'demo'
 vault:
-  address: 'http://{vault_host}:{vault_port}'
+  base_url: 'http://{vault_host}:{vault_port}'
   path: 'rotate/invalid/initialized/secret'
                 "
             )
@@ -217,7 +217,7 @@ postgres:
   port: {postgres_port}
   database: 'demo'
 vault:
-  address: 'http://{vault_host}:{vault_port}'
+  base_url: 'http://{vault_host}:{vault_port}'
   path: 'rotate/non/existing/path'
                 "
             )

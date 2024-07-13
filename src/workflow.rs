@@ -1,5 +1,6 @@
-use log::{debug, trace};
+use log::{debug, info, trace};
 
+use crate::argo_cd::ArgoCD;
 use crate::cli::RotateArgs;
 use crate::config::Config;
 use crate::database::PostgresClient;
@@ -9,16 +10,19 @@ use crate::vault::{Vault, VaultStructure};
 pub(crate) fn rotate_secrets_using_switch_method(
     rotate_args: &RotateArgs,
     config: &Config,
+    argo_cd: &mut ArgoCD,
     vault: &mut Vault,
 ) {
     let db: PostgresClient = PostgresClient::init(config);
 
-    debug!("Starting 'switch' workflow");
+    info!("Starting 'switch' workflow");
 
-    let vault_path = config.vault.clone().path;
-    let mut secret: VaultStructure = vault
-        .read_secret()
-        .unwrap_or_else(|_| panic!("Failed to read path '{vault_path}' - did you init Vault?"));
+    let mut secret: VaultStructure = vault.read_secret().unwrap_or_else(|_| {
+        panic!(
+            "Failed to read path '{}' - did you init Vault?",
+            config.vault.clone().path
+        )
+    });
 
     if secret.postgresql_active_user != secret.postgresql_user_1
         && secret.postgresql_active_user != secret.postgresql_user_2
@@ -36,8 +40,12 @@ pub(crate) fn rotate_secrets_using_switch_method(
         .expect("Failed to kick-off rotation workflow by switching active user - Vault is in an invalid state");
 
     debug!("Active and passive users switched and synchronized into Vault");
+    debug!("Starting ArgoCD rollout now");
 
-    // TODO: Trigger ArgoCD Sync
+    argo_cd.sync();
+    argo_cd.wait_for_rollout();
+
+    debug!("ArgoCD rollout succeeded, continue changing password of previously active user");
 
     let new_password: String = generate_random_password(rotate_args.password_length);
 
@@ -75,6 +83,8 @@ fn update_passive_user_postgres_password(
     secret: &mut VaultStructure,
     new_password: String,
 ) {
+    info!("Rotating database password of passive user");
+
     let (passive_user, passive_user_password) =
         if secret.postgresql_active_user == secret.postgresql_user_1 {
             let original_password = secret.postgresql_user_2_password.clone();
@@ -90,9 +100,9 @@ fn update_passive_user_postgres_password(
     let query = format!("ALTER ROLE {passive_user} WITH PASSWORD '{new_password}'");
 
     conn.execute(query.as_str(), &[])
-        .unwrap_or_else(|_| panic!("Failed to update password of '{passive_user}'"));
+        .unwrap_or_else(|_| panic!("Failed to update password of '{}'", passive_user));
 
-    debug!("Successfully rotated PostgreSQL password of passive user");
+    trace!("Successfully rotated database password of passive user");
 }
 
 #[cfg(test)]
@@ -150,7 +160,7 @@ mod tests {
     // }
 
     fn create_vault_structure_active_user_1() -> VaultStructure {
-        let mut secret = VaultStructure {
+        let secret = VaultStructure {
             postgresql_active_user: "user1".to_string(),
             postgresql_active_user_password: "password1".to_string(),
             postgresql_user_1: "user1".to_string(),
@@ -162,7 +172,7 @@ mod tests {
     }
 
     fn create_vault_structure_active_user_2() -> VaultStructure {
-        let mut secret = VaultStructure {
+        let secret = VaultStructure {
             postgresql_active_user: "user2".to_string(),
             postgresql_active_user_password: "password2".to_string(),
             postgresql_user_1: "user1".to_string(),

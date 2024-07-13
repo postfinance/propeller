@@ -63,12 +63,15 @@ If you don't provide the argument, the tool will default to `config.yml` in the 
 The configuration file is in YAML format and has the following structure:
 
 ```yaml
+argo_cd:
+  application: 'sut'
+  base_url: 'http://localhost'
 postgres:
   host: 'localhost' # Replace with your database host
   port: 5432 # Replace with your database port
   database: 'demo' # Replace with your database
 vault:
-  address: 'http://localhost:8200' # Replace with your Vault address
+  base_url: 'http://localhost:8200' # Replace with your Vault address
   path: 'path/to/my/secret' # Replace with the desired path in Vault
 ```
 
@@ -142,8 +145,18 @@ propeller rotate [OPTIONS]
 
 #### Options
 
-#### Sequence Diagram
+#### Sequence Diagram "Switch"
 
 !["switch" Workflow](https://www.plantuml.com/plantuml/png/nLF1RjGm4BtxAmPnWKFLRWMNFQ2M8d7X02nmT-qXiUHuZ3tUYh_7cpJOHbQ4gfLwoMx6y-Qzl7c-YIm3fycA5ppYX70qzq4w5iBdkb76vnVu7CYZjHZWvTNLc_TlRvlJ7p9PRlifyX3myELJKxuD0zrzQ4lUMwCa6t92E684EcAeo_lw1LB4U7e4s0aX5PkZP2pwX2XIBzujolRm5NybZ0npFyxmWbtKpq-uo9Y_0_OhZyQskIMf0H_HOJZrPGirJU1bZ0yKT8kexCdQY3DWeRekW9MnjhBy_LVe8Ic5CHQbDQxloNUlDtbhMxRPIdUNwF1WM8srzy3qo7jEkYLSU_WMp33aKY1hAN6XU4pVyfCHRSWElvqglTNH2jXKLHE82lp44BRI5gywtzyGjR6w8-TGCMJpnsBsTgPQtdN6F1qZotjhueYw7xAw-lGxVIs49V9vhhMG71kxhX4KJTxYQLO0DXFcMc__nUSLc9LpYjqOTBOwDyChZquRDrp6PSkNFwMng5ztjetkVs_txfbkz-vSjxjKIh-uGQVJPFy0)
 
 <small><a href="./docs/switch-workflow.puml">Source</a>.</small>
+
+<hr/>
+
+## Feedback and Contributions
+
+We value _all_ of your feedback and contributions, including 💌 love letters , 💡 feature requests, 🐞 bug reports, and ✍️ grammatical nit-picks in the docs. Please [create an issue](https://github.com/postfinance/propeller/issues/new), open a pull request, or reach out to [@postfinance](https://github.com/postfinance).
+
+**Welcome to the bottom of the README club! Since you've come this far, go ahead and smash that like and subsc… er, uh, give this project a ⭐️ on GitHub! 🙏🏼**
+
+<small>Hats off to [@pmcelhaney](https://github.com/pmcelhaney/counterfact) for this amazing line that we couldn't resist stealing.. er, uh, which inspired us. Hope you don't mind 😏</small>

@@ -4,4 +4,4 @@ postgres:
   database: 'demo'
 vault:
   base_url: 'http://localhost:1234'
-  path: 'init/vault/invalid/url'
+  path: 'config/missing/postgresql'

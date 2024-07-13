@@ -1,7 +1,10 @@
+use log::trace;
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 
 pub(crate) fn generate_random_password(length: usize) -> String {
+    trace!("Generating random password");
+
     let mut rng = thread_rng();
     let password: String = (0..length)
         .map(|_| rng.sample(Alphanumeric) as char)
