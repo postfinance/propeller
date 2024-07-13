@@ -9,7 +9,7 @@ module.exports = {
     [
       '@semantic-release/exec',
       {
-        prepareCmd: 'cargo bump ${nextRelease.version} && cargo build --release',
+        prepareCmd: './github/pipeline/prepareCmd.sh ${nextRelease.version}',
       },
     ],
     [

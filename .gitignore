@@ -217,3 +217,7 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# OpenAPI generator
+openapitools.json
+src/argo-cd

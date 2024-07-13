@@ -14,19 +14,21 @@
   "license": "Apache-2.0",
   "author": "PostFinance AG",
   "scripts": {
+    "openapi:generate:argocd": "openapi-generator-cli generate -i argo-cd/assets/swagger.json -g rust -o src/argo-cd",
     "prepare": "husky",
     "prettier": "prettier \"{,.github/workflows/,dev/}*.{md,js,json,yml}\"",
     "prettier:check": "npm run prettier -- --check",
     "prettier:format": "npm run prettier -- --write"
   },
   "devDependencies": {
-    "@commitlint/config-conventional": "^19.2.2",
-    "@semantic-release/exec": "^6.0.3",
-    "@semantic-release/github": "^10.1.4",
-    "commitlint": "^19.4.0",
-    "husky": "^9.1.4",
-    "lint-staged": "^15.2.8",
-    "prettier": "^3.3.3",
-    "prettier-plugin-packagejson": "^2.5.1"
+    "@commitlint/config-conventional": "19.2.2",
+    "@openapitools/openapi-generator-cli": "2.13.4",
+    "@semantic-release/exec": "6.0.3",
+    "@semantic-release/github": "10.1.4",
+    "commitlint": "19.4.0",
+    "husky": "9.1.4",
+    "lint-staged": "15.2.8",
+    "prettier": "3.3.3",
+    "prettier-plugin-packagejson": "2.5.1"
   }
 }
