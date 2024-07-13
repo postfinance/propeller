@@ -1,0 +1,3 @@
+[submodule "argo-cd"]
+	path = argo-cd
+	url = https://github.com/argoproj/argo-cd.git
