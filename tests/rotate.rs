@@ -3,12 +3,17 @@ use std::process::Command;
 
 use assert_cmd::cargo::cargo_bin;
 use assert_cmd::prelude::*;
+use kube::config::{KubeConfigOptions, Kubeconfig};
+use kube::Config;
 use lazy_static::lazy_static;
 use postgres::NoTls;
 use predicates::str::contains;
 use reqwest::{Client, Response};
+use rustls::crypto::CryptoProvider;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use testcontainers::{Container, Image};
+use testcontainers_modules::k3s::{K3s, KUBE_SECURE_PORT};
 use tokio::runtime::{Builder, Runtime};
 
 mod common;
@@ -34,7 +39,10 @@ struct VaultSecretDTO {
 
 #[test]
 fn rotate_secrets() {
-    let k3s_container = common::k3s_container();
+    let kubernetes_container = common::k3s_container();
+
+    let rt: Runtime = create_tokio_runtime();
+    let kubectl = get_kube_client(kubernetes_container, &rt);
 
     let postgres_container = common::postgres_container();
 
@@ -51,8 +59,6 @@ fn rotate_secrets() {
 
     let http_client = Client::new();
     let url = format!("http://{vault_host}:{vault_port}/v1/secret/data/rotate/secrets");
-
-    let rt: Runtime = create_tokio_runtime();
 
     reset_vault_secret_path(&http_client, url.as_str(), &rt);
 
@@ -323,4 +329,40 @@ fn read_secret_as_json(http_client: Client, url: &str, rt: Runtime) -> Value {
         .block_on(response.json())
         .expect("Failed to convert Vault response to JSON");
     json
+}
+
+/**
+ * Source: https://github.com/testcontainers/testcontainers-rs-modules-community/blob/66bbad597d4bbed30ef210e6a0afdb64089a3bb7/src/k3s/mod.rs#L210C5-L234C6
+ */
+pub fn get_kube_client(kubernetes_container: Container<K3s>, rt: &Runtime) -> kube::Client {
+    let kube_conf = kubernetes_container
+        .image()
+        .read_kube_config()
+        .expect("Cannot read kube conf");
+    let kube_port = kubernetes_container
+        .get_host_port_ipv4(KUBE_SECURE_PORT)
+        .unwrap();
+
+    if CryptoProvider::get_default().is_none() {
+        rustls::crypto::ring::default_provider()
+            .install_default()
+            .expect("Error initializing rustls provider");
+    }
+
+    let mut config = Kubeconfig::from_yaml(kube_conf.as_str()).expect("Error loading kube config");
+
+    config.clusters.iter_mut().for_each(|cluster| {
+        if let Some(server) = cluster.cluster.as_mut().and_then(|c| c.server.as_mut()) {
+            *server = format!("https://127.0.0.1:{}", kube_port)
+        }
+    });
+
+    let client_config = rt
+        .block_on(Config::from_custom_kubeconfig(
+            config,
+            &KubeConfigOptions::default(),
+        ))
+        .expect("Error while reading kube config");
+
+    kube::Client::try_from(client_config).expect("Error creating kubectl")
 }

@@ -16,6 +16,16 @@ pub(crate) struct ArgoConfig {
     pub(crate) sync_timeout_seconds: Option<u16>,
 }
 
+impl Default for ArgoConfig {
+    fn default() -> Self {
+        ArgoConfig {
+            application: String::from(""),
+            base_url: String::from(""),
+            sync_timeout_seconds: Option::from(60),
+        }
+    }
+}
+
 #[derive(Clone, Deserialize, Debug)]
 pub(crate) struct PostgresConfig {
     pub(crate) host: String,

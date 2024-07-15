@@ -117,6 +117,7 @@ mod tests {
             argo_cd: ArgoConfig {
                 application: "sut".to_string(),
                 base_url: "http://localhost:3100".to_string(),
+                ..Default::default()
             },
             postgres: mock_postgres_config(),
             vault: VaultConfig {
@@ -139,6 +140,7 @@ mod tests {
             argo_cd: ArgoConfig {
                 application: "sut".to_string(),
                 base_url: "http://localhost:3100".to_string(),
+                ..Default::default()
             },
             postgres: mock_postgres_config(),
             vault: VaultConfig {
@@ -157,6 +159,7 @@ mod tests {
             argo_cd: ArgoConfig {
                 application: "sut".to_string(),
                 base_url: "http://localhost:3100".to_string(),
+                ..Default::default()
             },
             postgres: mock_postgres_config(),
             vault: VaultConfig {
