@@ -24,7 +24,7 @@
     "@semantic-release/exec": "^6.0.3",
     "@semantic-release/github": "^10.1.1",
     "commitlint": "^19.3.0",
-    "husky": "^9.0.11",
+    "husky": "^9.1.1",
     "lint-staged": "^15.2.7",
     "prettier": "^3.3.2",
     "prettier-plugin-packagejson": "^2.5.0"
