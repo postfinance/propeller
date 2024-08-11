@@ -29,6 +29,9 @@ fn init_vault_new_path() {
             format!(
                 // language=yaml
                 "
+argo_cd:
+  application: 'sut'
+  base_url: 'http://localhost:3100'
 postgres:
   host: 'localhost'
   port: 5432
