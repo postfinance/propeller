@@ -23,7 +23,13 @@
   </a>
 </p>
 
-<hr>
+<hr />
+
+<div style="padding: 15px; border: 1px solid #ffeeba; border-radius: 4px; color: #856404; background-color: #fff3cd; margin-bottom: 20px;">
+  <strong>Note:</strong> This project is still under construction. Features may be incomplete or subject to change.
+</div>
+
+<hr />
 
 ## Target Architecture
 
