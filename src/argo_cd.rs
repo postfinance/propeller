@@ -61,10 +61,7 @@ impl ArgoCD {
     }
 
     pub(crate) fn wait_for_rollout(&mut self) {
-        let timeout_seconds = self
-            .argo_config
-            .sync_timeout_seconds
-            .unwrap_or_else(|| 60u16);
+        let timeout_seconds = self.argo_config.sync_timeout_seconds.unwrap_or(60u16);
 
         info!(
             "Waiting for rollout of ArgoCD application '{}' to finish - timeout is {} seconds",
