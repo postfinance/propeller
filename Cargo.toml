@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 clap = { version = "4.5.13", features = ["derive"] }
-env_logger = "0.11.3"
+env_logger = "0.11.5"
 lazy_static = "1.5.0"
 log = "0.4.22"
 postgres = "0.19.7"
