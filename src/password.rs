@@ -1,5 +1,5 @@
 use log::trace;
-use rand::distributions::Alphanumeric;
+use rand::distr::Alphanumeric;
 use rand::{thread_rng, Rng};
 
 pub(crate) fn generate_random_password(length: usize) -> String {
