@@ -4,10 +4,10 @@ use std::process::Command;
 use assert_cmd::cargo::cargo_bin;
 use assert_cmd::prelude::*;
 use lazy_static::lazy_static;
+use ntest::timeout;
 use predicates::str::contains;
 use reqwest::{Client, Response};
 use serde_json::Value;
-use tokio::runtime::{Builder, Runtime};
 
 mod common;
 
@@ -15,12 +15,13 @@ lazy_static! {
     static ref BIN_PATH: PathBuf = cargo_bin(env!("CARGO_PKG_NAME"));
 }
 
-#[test]
-fn init_vault_new_path() {
-    let vault_container = common::vault_container();
+#[tokio::test]
+#[timeout(30_000)]
+async fn init_vault_new_path() {
+    let vault_container = common::vault_container().await;
 
-    let vault_host = vault_container.get_host().unwrap();
-    let vault_port = vault_container.get_host_port_ipv4(8200).unwrap();
+    let vault_host = vault_container.get_host().await.unwrap();
+    let vault_port = vault_container.get_host_port_ipv4(8200).await.unwrap();
 
     Command::new(&*BIN_PATH)
         .arg("init-vault")
@@ -51,22 +52,22 @@ vault:
         ));
 
     let client = Client::new();
-    let url = format!("http://{vault_host}:{vault_port}/v1/secret/data/init/vault/new/path");
 
-    let rt: Runtime = create_tokio_runtime();
-    let json = read_secret_as_json(client, url.as_str(), rt);
+    let vault_url = format!("http://{vault_host}:{vault_port}/v1/secret/data/init/vault/new/path");
+    let json_secret = read_secret_as_json(client, vault_url.as_str()).await;
 
-    assert_json_value_equals(&json, "postgresql_active_user", "TBD");
-    assert_json_value_equals(&json, "postgresql_active_user_password", "TBD");
-    assert_json_value_equals(&json, "postgresql_user_1", "TBD");
-    assert_json_value_equals(&json, "postgresql_user_1_password", "TBD");
-    assert_json_value_equals(&json, "postgresql_user_2", "TBD");
-    assert_json_value_equals(&json, "postgresql_user_2_password", "TBD");
+    assert_json_value_equals(&json_secret, "postgresql_active_user", "TBD");
+    assert_json_value_equals(&json_secret, "postgresql_active_user_password", "TBD");
+    assert_json_value_equals(&json_secret, "postgresql_user_1", "TBD");
+    assert_json_value_equals(&json_secret, "postgresql_user_1_password", "TBD");
+    assert_json_value_equals(&json_secret, "postgresql_user_2", "TBD");
+    assert_json_value_equals(&json_secret, "postgresql_user_2_password", "TBD");
 }
 
-#[test]
-fn init_vault_invalid_url() {
-    common::vault_container();
+#[tokio::test]
+#[timeout(30_000)]
+async fn init_vault_invalid_url() {
+    common::vault_container().await;
 
     Command::new(&*BIN_PATH)
         .arg("init-vault")
@@ -79,25 +80,23 @@ fn init_vault_invalid_url() {
         .stderr(contains("error sending request for url"));
 }
 
-fn create_tokio_runtime() -> Runtime {
-    Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .expect("Failed to build Vault connection")
-}
-
-fn read_secret_as_json(client: Client, url: &str, rt: Runtime) -> Value {
-    let response: Response = rt
-        .block_on(client.get(url).header("X-Vault-Token", "root-token").send())
+async fn read_secret_as_json(client: Client, url: &str) -> Value {
+    let response: Response = client
+        .get(url)
+        .header("X-Vault-Token", "root-token")
+        .send()
+        .await
         .expect("Error receiving Vault data");
 
     response
         .error_for_status_ref()
         .expect("Expected to reach Vault");
 
-    let json: Value = rt
-        .block_on(response.json())
+    let json: Value = response
+        .json()
+        .await
         .expect("Failed to convert Vault response to JSON");
+
     json
 }
 

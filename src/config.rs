@@ -1,6 +1,7 @@
+use std::{fs::File, io::Read, path::PathBuf};
+
 use log::debug;
 use serde::Deserialize;
-use std::{fs::File, io::Read, path::PathBuf};
 
 #[derive(Deserialize, Debug)]
 pub(crate) struct Config {
@@ -13,6 +14,7 @@ pub(crate) struct Config {
 pub(crate) struct ArgoConfig {
     pub(crate) application: String,
     pub(crate) base_url: String,
+    pub(crate) danger_accept_insecure: Option<bool>,
     pub(crate) sync_timeout_seconds: Option<u16>,
 }
 
@@ -21,6 +23,7 @@ impl Default for ArgoConfig {
         ArgoConfig {
             application: String::from(""),
             base_url: String::from(""),
+            danger_accept_insecure: Option::from(false),
             sync_timeout_seconds: Option::from(60),
         }
     }

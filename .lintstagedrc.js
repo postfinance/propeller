@@ -1,3 +1,3 @@
 module.exports = {
-  '{,.github/workflows/,dev/}*.{md,js,json,yml}': ['prettier --write'],
+  '{,.github/workflows/,dev/**/,tests/resources/**/}*.{md,js,json,y(a|)ml}': ['prettier --write'],
 };
