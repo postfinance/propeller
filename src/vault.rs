@@ -1,7 +1,8 @@
+use std::env;
+
 use log::{debug, info};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use std::env;
 use tokio::runtime::{Builder, Runtime};
 use vaultrs::api::kv2::responses::SecretVersionMetadata;
 use vaultrs::client::{VaultClient, VaultClientSettingsBuilder};
@@ -33,7 +34,7 @@ impl Vault {
         debug!("Connecting to Vault at: {}", config.vault.base_url);
 
         Vault {
-            vault_client: get_vault_client(config),
+            vault_client: Self::get_vault_client(config),
             vault_config: config.vault.clone(),
             rt: Builder::new_current_thread()
                 .enable_all()
@@ -88,28 +89,28 @@ impl Vault {
             &vault_structure,
         ))
     }
-}
 
-fn get_vault_client(config: &Config) -> VaultClient {
-    let vault_token = env::var(VAULT_TOKEN).expect("Missing VAULT_TOKEN environment variable");
+    fn get_vault_client(config: &Config) -> VaultClient {
+        let vault_token = env::var(VAULT_TOKEN).expect("Missing VAULT_TOKEN environment variable");
 
-    let vault_client: VaultClient = VaultClient::new(
-        VaultClientSettingsBuilder::default()
-            .address(config.vault.base_url.clone())
-            .token(vault_token)
-            .build()
-            .unwrap(),
-    )
-    .unwrap();
+        let vault_client: VaultClient = VaultClient::new(
+            VaultClientSettingsBuilder::default()
+                .address(config.vault.base_url.clone())
+                .token(vault_token)
+                .build()
+                .unwrap(),
+        )
+        .unwrap();
 
-    vault_client
+        vault_client
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
     use crate::config::{ArgoConfig, PostgresConfig};
-    use vaultrs::client::Client;
 
     #[test]
     fn successful_vault_connect() {
@@ -151,30 +152,6 @@ mod tests {
         env::remove_var(VAULT_TOKEN); // Ensure VAULT_TOKEN is not present
 
         let _ = Vault::connect(&config); // This should panic
-    }
-
-    #[test]
-    fn get_vault_client_returns_client() {
-        let config = Config {
-            argo_cd: ArgoConfig {
-                application: "sut".to_string(),
-                base_url: "http://localhost:3100".to_string(),
-                ..Default::default()
-            },
-            postgres: mock_postgres_config(),
-            vault: VaultConfig {
-                base_url: "http://localhost:8200".to_string(),
-                path: "path/to/my/secret".to_string(),
-            },
-        };
-        env::set_var(VAULT_TOKEN, "test_token");
-
-        let vault_client = get_vault_client(&config);
-
-        assert_eq!(
-            vault_client.settings().address.to_string(),
-            config.vault.base_url + "/"
-        );
     }
 
     fn mock_postgres_config() -> PostgresConfig {

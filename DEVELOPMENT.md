@@ -74,8 +74,10 @@ Refer to the respective scripts ([`dev/podman.sh`](dev/podman.sh) and [`dev/dock
 **Notes:**
 
 - If using any of these options, Vault will be accessible on http://localhost:8200.
-- The provided "root-token" is for development only. Use strong, unique tokens in production and follow best practices for Vault token management.
-- The demo database is initialized with sample users and credentials for demonstration purposes. After [having initialized Vault](#running-the-cli), you could configure these users for rotation, e.g. with the following secret value in `path/to/my/secret`:
+- The provided "root-token" is for development only.
+  Use strong, unique tokens in production and follow best practices for Vault token management.
+- The demo database is initialized with sample users and credentials for demonstration purposes.
+  After [having initialized Vault](#running-the-cli), you could configure these users for rotation, e.g. with the following secret value in `path/to/my/secret`:
 
 ```json
 {
@@ -135,6 +137,19 @@ If testcontainers fail to connect to your Docker socket on Windows, add the belo
 
 ```shell
 DOCKER_HOST=tcp://localhost:2375 cargo test
+```
+
+#### And a note for Linux Users
+
+You'll need to "fake" a Docker socket using `podman` (_if_ you're using `podman`, of course).
+Invoke `podman system service --time=0` directly to create a live-socket without using `systemd`.
+If you do not pass another parameter, the default location will be used to create the socket file.
+You can use the below commands _in another terminal_ to connect to the socket (according to [the docs](https://docs.podman.io/en/latest/markdown/podman-system-service.1.html#run-the-command-directly)).
+
+```shell
+export DOCKER_HOST=unix://$XDG_RUNTIME_DIR/podman/podman.sock
+export TESTCONTAINERS_RYUK_DISABLED=true
+cargo test
 ```
 
 ### Running the CLI

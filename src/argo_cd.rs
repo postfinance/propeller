@@ -1,8 +1,12 @@
-use log::{debug, info};
+use log::{debug, info, warn};
 use reqwest::Client;
+use std::env;
 use tokio::runtime::{Builder, Runtime};
+use urlencoding::encode;
 
 use crate::config::{ArgoConfig, Config};
+
+const ARGO_CD_TOKEN: &str = "ARGO_CD_TOKEN";
 
 pub(crate) struct ArgoCD {
     argo_config: ArgoConfig,
@@ -16,7 +20,7 @@ impl ArgoCD {
 
         ArgoCD {
             argo_config: config.argo_cd.clone(),
-            client: Client::new(),
+            client: Self::get_argocd_client(config.argo_cd.clone()),
             rt: Builder::new_current_thread()
                 .enable_all()
                 .build()
@@ -30,31 +34,37 @@ impl ArgoCD {
             self.argo_config.application
         );
 
-        let local_var_uri_str = format!(
+        let url = format!(
             "{}/api/v1/applications/{name}/sync",
             self.argo_config.base_url,
-            name = urlencode(self.argo_config.application.as_str())
+            name = encode(self.argo_config.application.as_str())
         );
-        let mut local_var_req_builder = self
-            .client
-            .request(reqwest::Method::POST, local_var_uri_str.as_str());
 
-        local_var_req_builder = local_var_req_builder.json("&body"); // TODO
+        let request_builder = self.client.post(url.as_str()).json("&body"); // TODO
 
-        let local_var_req = local_var_req_builder
+        let vault_token = env::var(ARGO_CD_TOKEN);
+        let request_builder = match vault_token {
+            Ok(token) => request_builder.header("Authorization", format!("Bearer {}", token)),
+            Err(_) => {
+                warn!("You're accessing ArgoCD without authentication (missing {} environment variable)", ARGO_CD_TOKEN);
+                request_builder
+            }
+        };
+
+        let request = request_builder
             .build()
             .expect("Failed to build ArgoCD sync request");
-        let local_var_resp = self
+
+        let response = self
             .rt
-            .block_on(self.client.execute(local_var_req))
+            .block_on(self.client.execute(request))
             .expect("Failed to sync ArgoCD");
 
-        let local_var_status = local_var_resp.status();
-
-        if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
+        let response_status = response.status();
+        if !response_status.is_client_error() && !response_status.is_server_error() {
             let local_var_content = self
                 .rt
-                .block_on(local_var_resp.text())
+                .block_on(response.text())
                 .unwrap_or_else(|_| panic!("Failed to sync ArgoCD"));
             panic!("Failed to sync ArgoCD: {}", local_var_content)
         }
@@ -68,8 +78,17 @@ impl ArgoCD {
             self.argo_config.application, timeout_seconds
         );
     }
+
+    fn get_argocd_client(argo_config: ArgoConfig) -> Client {
+        match argo_config.danger_accept_insecure {
+            Some(accept_insecure) => Client::builder()
+                .danger_accept_invalid_certs(accept_insecure)
+                .build()
+                .expect("Failed to build HTTP client"),
+            None => Client::new(),
+        }
+    }
 }
 
-pub fn urlencode<T: AsRef<str>>(s: T) -> String {
-    ::url::form_urlencoded::byte_serialize(s.as_ref().as_bytes()).collect()
-}
+#[cfg(test)]
+mod tests {}
