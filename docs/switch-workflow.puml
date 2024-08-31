@@ -1,14 +1,14 @@
 @startuml
 
-!theme vibrant
-
-participant Propeller #004B5A
+participant Propeller #F2A007
 participant Vault
-participant PostgreSQL
+participant PostgreSQL #A65526
 participant ArgoCD
 participant Application
 
-note over Application: Application uses user 1
+note over Application #167369
+    Application uses user 1
+end note
 
 activate Propeller
 
@@ -52,7 +52,9 @@ PostgreSQL --> Application: Connection established
 deactivate PostgreSQL
 deactivate Application
 
-note over Application: Application uses user 2
+note over Application #167369
+    Application uses user 2
+end note
 
 loop Poll until rollout complete or timeout
 Propeller -> ArgoCD: Request rollout status

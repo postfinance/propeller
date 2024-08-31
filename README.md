@@ -1,4 +1,4 @@
-<h1 align="center">
+<h1 align="center" style="color: #F2A007;">
   propeller - automated database secret rotation.
 </h1>
 
@@ -38,11 +38,12 @@
 - **Containerized Applications:** Applications are deployed within a [Kubernetes](https://kubernetes.io/) cluster for scalability and efficient resource management.
 - **PostgreSQL Database:** Data is persisted in a robust [PostgreSQL](https://www.postgresql.org/) database, known for its reliability and feature set.
 - **Vault for Secrets Management:** Sensitive information like passwords and API keys are securely stored and managed within [Vault](https://www.hashicorp.com/products/vault) for enhanced security.
-- **ArgoCD for GitOps Automation:** [ArgoCD](https://argoproj.github.io/cd/) is utilized for GitOps principles, enabling declarative management of infrastructure and applications through Git repositories. Importantly, ArgoCD can also manage the synchronization of secrets from Vault using plugins like [@postfinance/kubectl-vault_sync](https://github.com/postfinance/kubectl-vault_sync).
+- **ArgoCD for GitOps Automation:** [ArgoCD](https://argoproj.github.io/cd/) is utilized for GitOps principles, enabling declarative management of infrastructure and applications through Git repositories.
+  Importantly, ArgoCD can also manage the synchronization of secrets from Vault using plugins like [@postfinance/kubectl-vault_sync](https://github.com/postfinance/kubectl-vault_sync).
 
 ### Visual Representation
 
-![Architecture](https://www.plantuml.com/plantuml/png/VP2nRi8m48PtFyKrB310QDKkKMG1OQ6b4XLLzqjoX0Z7jiuELLNrtHj722gGEjh_tVzzzinvPDysIjpvFJK4npfdr5u8TwYrHSO62jDOeqbx-1O000ii3XMRLfUPKORJrBAnf1Inb32OJXyNJtFn8uJjvh0YYB9Ld2rXez3l33VHgUPI6wL5A4e6d_lQaypMgpJkRsG4w23KtqEQmfa3Klu5lBGviIPFxgPwRgsg2_IrqQ4AhRqUuCfaoskX3soLX-sNBc3uRF9Hxt5qtLdyxxvgEg4R-uSR-z1oOiDa8eDO0g-eksrtdVNSSmh3EDum1RSuXhqnXr7uYn8zvkW8DiRvgilVre5UvkBYshzAY8u5ux7iiWIstZ11M1Oz1jAGz8C9l3DgjoC6HmMJTs96kcmRzGi0)
+![Architecture](https://www.plantuml.com/plantuml/png/VP3HQi8m58RlynI7UgCNjKxGGGa1LncuEN08kq_hMIssEI696zlOko-9GqU5vIuvVxx_I-oXKLeQsK55dIQ5oi4N0x_kP7Me3HtLhg2M3EVQaCQsHIC43EwdYydabdqpfdrErWX9iSgA9MnQwLx9TCalve9DU1L0-U1ztpWKnNh5itWY4f0M0lu6E8Tp3mZnj-3nMA9HwD1UeHTQjqqbNKCgeAJM_O2fgLZsXLxaiNMm_L0L31-e74MFD-ltx7_tLUU5hkodL_QHSkg6yLW4iHoUfFAtRNyMUyzJ66RPnc1mopBO4nr6uIzsqibIMeGDMLVx-VCwjEzA62pcizbqpYxEyNMC-Kv8K-4pEMmT6OG0OR4EU9gUSddyXhqXrNmYMAmCEij-0000)
 
 <small><a href="./docs/application-architecture.puml">Source</a>.</small>
 
@@ -50,7 +51,7 @@
 
 ## Configuration
 
-Propeller relies on a [configuration file](#configuration-file-yaml) and [environment variables](#vault-authentication-token-vault_token) to function correctly.
+Propeller relies on a [configuration file](#configuration-file-yaml) and [environment variables](#environment-variables) to function correctly.
 
 Once you're done configuring, [initialize Vault](#initializing-vault-for-secret-management).
 And that's it: Proceed to [rotate your secrets](#rotating-secrets).
@@ -62,25 +63,79 @@ If you don't provide the argument, the tool will default to `config.yml` in the 
 
 The configuration file is in YAML format and has the following structure:
 
+| Root       | Property                 | Description                                                                              | Required?                  |
+| ---------- | ------------------------ | ---------------------------------------------------------------------------------------- | -------------------------- |
+| `argo_cd`  |                          | ArgoCD-related configuration                                                             | ✔️                         |
+|            | `application`            | The name of the application you'd like to synchronise inside ArgoCD                      | ✔️                         |
+|            | `base_url`               | The base URL of your ArgoCD instance                                                     | ✔️                         |
+|            | `danger_accept_insecure` | Whether to accept insecure/self-signed SSL certificates (not recommended for production) | ❌                         |
+|            | `sync_timeout_seconds`   | The timeout in seconds for the synchronization process                                   | ❌                         |
+| `postgres` |                          | PostgreSQL database configuration                                                        |                            |
+|            | `host`                   | The hostname or IP address of the PostgreSQL server                                      | ✔️ (if `postgres` is used) |
+|            | `port`                   | The port number on which PostgreSQL is running                                           | ✔️ (if `postgres` is used) |
+|            | `database`               | The name of the PostgreSQL database to connect to                                        | ✔️ (if `postgres` is used) |
+| `vault`    |                          | HashiCorp Vault configuration                                                            |                            |
+|            | `base_url`               | The base URL of your Vault instance                                                      | ✔️                         |
+|            | `path`                   | The path to the secret in Vault                                                          | ✔️                         |
+
+**Note:**
+
+- ✔️ indicates a required field
+- ❌ indicates an optional field
+- Fields marked as required under specific conditions (e.g., "if `postgres` is used") are only required if you're using that particular feature or integration.
+  Right now only PostgreSQL is supported, but that might change in the future.
+
+Here's an example configuration file with explanations:
+
 ```yaml
+# ArgoCD configuration (required)
 argo_cd:
-  application: 'sut'
-  base_url: 'http://localhost'
+  application: 'propeller'
+  base_url: 'http://localhost:8080'
+  danger_accept_insecure: false # Only use 'true' in non-production environments
+  sync_timeout_seconds: 60
+
+# PostgreSQL configuration (required if using a PostgreSQL database)
 postgres:
-  host: 'localhost' # Replace with your database host
-  port: 5432 # Replace with your database port
-  database: 'demo' # Replace with your database
+  host: 'localhost'
+  port: 5432
+  database: 'demo'
+
+# Vault configuration (required)
 vault:
-  base_url: 'http://localhost:8200' # Replace with your Vault address
-  path: 'path/to/my/secret' # Replace with the desired path in Vault
+  base_url: 'http://localhost:8200'
+  path: 'path/to/my/secret'
 ```
 
-Make sure to replace the placeholder values with your actual database connection details and the desired Vault path.
+Make sure to replace the placeholder values with your actual ArgoCD details, database connection information, and the desired Vault path.
 
-### Vault Authentication Token (`VAULT_TOKEN`)
+### Environment Variables
 
-In addition to the configuration file, Propeller requires a `VAULT_TOKEN` environment variable.
-This token is used to authenticate with your Vault instance.
+All sensitive information is passed to Propeller using environment variables.
+**Make sure to keep all sensitive information/tokens stored securely!**
+_Never_ include any token directly in the configuration file or commit it to version control.
+
+#### ArgoCD Authentication Token (`ARGO_CD_TOKEN`)
+
+Propeller supports optional authentication with ArgoCD using the `ARGO_CD_TOKEN` environment variable.
+If provided, this token will be used to authenticate with your ArgoCD instance.
+
+**Setting the `ARGO_CD_TOKEN` (Optional):**
+
+If you want to use authentication with ArgoCD, you can set the `ARGO_CD_TOKEN` environment variable in your shell:
+
+```shell
+export ARGO_CD_TOKEN=<your_argocd_token>
+```
+
+Replace `<your_argocd_token>` with your actual ArgoCD token.
+If the `ARGO_CD_TOKEN` is not set, Propeller will attempt to connect to ArgoCD without authentication.
+This might be suitable for local development or environments where ArgoCD does not require authentication, but is not recommended in productive environments!
+
+#### Vault Authentication Token (`VAULT_TOKEN`)
+
+In addition to the configuration file, Propeller **requires** a `VAULT_TOKEN` environment variable.
+This token is used to authenticate with your Vault instance. Unauthenticated access is prohibited.
 
 **Setting the `VAULT_TOKEN`:**
 
@@ -92,8 +147,6 @@ export VAULT_TOKEN=<your_vault_token>
 ```
 
 Replace `<your_vault_token>` with your actual Vault token.
-**And make sure to keep this token secure!**
-_Never_ include your `VAULT_TOKEN` directly in the configuration file or commit it to version control.
 
 ## Commands
 
@@ -147,7 +200,7 @@ propeller rotate [OPTIONS]
 
 #### Sequence Diagram "Switch"
 
-!["switch" Workflow](https://www.plantuml.com/plantuml/png/nLF1RjGm4BtxAmPnWKFLRWMNFQ2M8d7X02nmT-qXiUHuZ3tUYh_7cpJOHbQ4gfLwoMx6y-Qzl7c-YIm3fycA5ppYX70qzq4w5iBdkb76vnVu7CYZjHZWvTNLc_TlRvlJ7p9PRlifyX3myELJKxuD0zrzQ4lUMwCa6t92E684EcAeo_lw1LB4U7e4s0aX5PkZP2pwX2XIBzujolRm5NybZ0npFyxmWbtKpq-uo9Y_0_OhZyQskIMf0H_HOJZrPGirJU1bZ0yKT8kexCdQY3DWeRekW9MnjhBy_LVe8Ic5CHQbDQxloNUlDtbhMxRPIdUNwF1WM8srzy3qo7jEkYLSU_WMp33aKY1hAN6XU4pVyfCHRSWElvqglTNH2jXKLHE82lp44BRI5gywtzyGjR6w8-TGCMJpnsBsTgPQtdN6F1qZotjhueYw7xAw-lGxVIs49V9vhhMG71kxhX4KJTxYQLO0DXFcMc__nUSLc9LpYjqOTBOwDyChZquRDrp6PSkNFwMng5ztjetkVs_txfbkz-vSjxjKIh-uGQVJPFy0)
+!["switch" Workflow](https://www.plantuml.com/plantuml/png/nLGzJyCm4DtzAqxg0aDL6jHMT42gYc1XA1JOZNEabbpRs4uh_ZtEjvEc1Q5AP72aoxrxTy_legbnd75DfOELKHg5G0E3-sXnTJKZElZwHbFXMf6LiYunk7vwXC5YEfb4qzRdXKdKyguTqbfmHXrNaX2f78BQUReW38FnT7OzlI7Wdp2UMhJPOM1CKCQGeGcXpF4TzNNgtWbfnXZU5btFuHa_KxGEydpCwpJOOhByXA77r0Nc5M6CdUGsIG1uG8acopDKnceBcbgxLoRk8chfV6_APO2SAce0pMXrBWaKxpIwJXb3QyDE0rol9gywFibxGfOUjZvTIgBrdZks2RK7fqhUSz8LXfl3Y-59uaD62Q5Irr2KZYnUEQ8nc6VvaYp83QnQ0NxigYGWeN7_QC9MQwLMX_DtY49RBPMKo1nuyJS7OX_tL8kth95LzutJTy7j1kCZ9WjrECUUHy6U2wMqvn82KkcugAuMcDfgWLbzxoc-nUowUprHQLy1_JGkjKUjqRdfF1akj6-8osHaYviVVL0kCBxiSO1F_EN6Z_zfuyVdslYGl_u9VmC0)
 
 <small><a href="./docs/switch-workflow.puml">Source</a>.</small>
 
@@ -155,7 +208,8 @@ propeller rotate [OPTIONS]
 
 ## Feedback and Contributions
 
-We value _all_ of your feedback and contributions, including 💌 love letters , 💡 feature requests, 🐞 bug reports, and ✍️ grammatical nit-picks in the docs. Please [create an issue](https://github.com/postfinance/propeller/issues/new), open a pull request, or reach out to [@postfinance](https://github.com/postfinance).
+We value _all_ of your feedback and contributions, including 💌 love letters , 💡 feature requests, 🐞 bug reports, and ✍️ grammatical nitpicks in the docs.
+Please [create an issue](https://github.com/postfinance/propeller/issues/new), open a pull request, or reach out to [@postfinance](https://github.com/postfinance).
 
 **Welcome to the bottom of the README club! Since you've come this far, go ahead and smash that like and subsc… er, uh, give this project a ⭐️ on GitHub! 🙏🏼**
 

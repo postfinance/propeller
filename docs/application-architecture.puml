@@ -1,9 +1,7 @@
 @startuml
 
-!theme vibrant
-
 skinparam component {
-    BackgroundColor<<propeller>> #004B5A
+    BackgroundColor<<propeller>> #F2A007
 }
 
 package "CI/CD Platform" {
@@ -21,10 +19,10 @@ package Kubernetes {
     ArgoCD ..> vsync: Manages (//PreSync// hook)
 }
 
-database PostgreSQL as db
+database PostgreSQL as db #A65526
 component Vault
 
 app --> db: Store data
-vsync <--> Vault: Transfer secrets
+vsync <-- Vault: Synchronize secrets
 
 @enduml
