@@ -85,8 +85,8 @@ async fn rotate_secrets() {
                 "
     argo_cd:
       application: 'propeller'
-      danger_accept_insecure: true
       base_url: 'http://127.0.0.1:{argocd_port}'
+      danger_accept_insecure: true
     postgres:
       host: '{postgres_host}'
       port: {postgres_port}
@@ -167,6 +167,85 @@ async fn rotate_secrets() {
         .expect("Failed to stop port forward-process");
 
     delete_argocd_deployment();
+}
+
+#[tokio::test]
+#[timeout(120_000)]
+async fn rotate_application_sync_timeout() {
+    deploy_argocd();
+
+    let postgres_container = common::postgres_container().await;
+
+    let postgres_host = postgres_container.get_host().await.unwrap().to_string();
+    let postgres_port = postgres_container
+        .get_host_port_ipv4(5432)
+        .await
+        .unwrap()
+        .to_string();
+
+    let vault_container = common::vault_container().await;
+
+    let vault_host = vault_container.get_host().await.unwrap();
+    let vault_port = vault_container.get_host_port_ipv4(8200).await.unwrap();
+
+    let http_client = Client::new();
+
+    let vault_url = format!("http://{vault_host}:{vault_port}/v1/secret/data/rotate/secrets");
+    reset_vault_secret_path(&http_client, vault_url.as_str()).await;
+
+    let mut postgres_client = connect_postgres_client(
+        postgres_host.as_str(),
+        postgres_port.as_str(),
+        "demo",
+        "demo_password",
+    )
+    .await;
+
+    reset_role_initial_password(&mut postgres_client, "user1").await;
+    reset_role_initial_password(&mut postgres_client, "user2").await;
+
+    let (argocd_port, mut port_forward) = open_argocd_server_port_forward();
+    let argocd_url = format!("http://localhost:{}", argocd_port);
+
+    let argocd_token = get_argocd_access_token(argocd_url.as_str()).await;
+    create_argocd_application(argocd_url.as_str(), argocd_token.as_str()).await;
+
+    Command::new(&*BIN_PATH)
+        .arg("rotate")
+        .arg("-c")
+        .arg(common::write_string_to_tempfile(
+            format!(
+                // language=yaml
+                "
+    argo_cd:
+      application: 'propeller'
+      base_url: 'http://127.0.0.1:{argocd_port}'
+      danger_accept_insecure: true
+      sync_timeout_seconds: 5
+    postgres:
+      host: '{postgres_host}'
+      port: {postgres_port}
+      database: 'demo'
+    vault:
+      base_url: 'http://{vault_host}:{vault_port}'
+      path: 'rotate/secrets'
+"
+            )
+            .as_str(),
+        ))
+        .env("ARGO_CD_TOKEN", argocd_token)
+        .env("VAULT_TOKEN", "root-token")
+        .assert()
+        .failure()
+        .stderr(contains(
+            // The configured sync timeout of 5 seconds is no match for the 10 seconds sleep in the pre-sync hook
+            "Timeout reached while waiting for ArgoCD rollout to complete",
+        ));
+
+    // Kill `kubectl port-forward` process
+    let _ = port_forward
+        .kill()
+        .expect("Failed to stop port forward-process");
 }
 
 #[tokio::test]

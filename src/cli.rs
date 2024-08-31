@@ -39,7 +39,7 @@ pub(crate) struct RotateArgs {
     #[clap(flatten)] // Inherit arguments from BaseArgs
     pub(crate) base: BaseArgs,
 
-    /// Whether the CLI should write a recovery log (contains sensitive information!) or not
+    /// The length of the randomly generated alphanumeric password
     #[clap(short, long, default_value = "20")]
     pub(crate) password_length: usize,
 
@@ -53,5 +53,4 @@ pub(crate) struct RotateArgs {
 pub(crate) struct InitVaultArgs {
     #[clap(flatten)] // Inherit arguments from BaseArgs
     pub(crate) base: BaseArgs,
-    // Additional arguments for vault initialization (if any) can be added here.
 }
