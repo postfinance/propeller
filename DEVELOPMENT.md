@@ -7,7 +7,12 @@ This guide will help you set up your development environment for the project.
 - [Prerequisites](#prerequisites)
 - [Preparing the Repository](#preparing-the-repository)
 - [Environment Setup](#environment-setup)
+  - [With `podman`](#setting-up-with-podman)
+  - [With Docker](#setting-up-with-docker)
 - [Building the Project](#building-the-project)
+  - [Building a Binary](#building-a-binary)
+  - [Running Tests](#running-tests)
+  - [Running the CLI](#running-the-cli)
 
 ## Prerequisites
 
@@ -126,10 +131,40 @@ To run the compiled binary, execute:
 Cargo makes it easy to run the project's unit and integration tests:
 
 ```shell
-cargo tests
+cargo test
 ```
 
-**Note that the integration tests make use of [testcontainers](https://testcontainers.com) in order to spin up ArgoCD, Vault and PostgreSQL.**
+Note that the integration tests make use of both [Kubernetes](https://kubernetes.io/) and [testcontainers](https://testcontainers.com).
+
+Vault and PostgreSQL will be deployed automatically using testcontainers.
+But we couldn't get ArgoCD working with testcontainers and `k3s`.
+Therefore, the separate Kubernetes cluster requirement.
+See this [GitHub issue](https://github.com/testcontainers/testcontainers-rs-modules-community/issues/200) for more information.
+
+`kubectl` must also be usable from the `PATH`.
+
+Once you have all this up and running, you can execute the integration tests without further ado.
+
+#### Debugging ArgoCD
+
+For development and debugging purposes it's also good to be able to take a look at ArgoCD sometimes.
+You can install ArgoCD into it using the below command:
+
+```shell
+kubectl apply -f tests/resources/argocd.deployment.yml
+```
+
+Next, extract the initial password for ArgoCD:
+
+```shell
+kubectl get secret argocd-initial-admin-secret -o jsonpath={.data.password} | base64 -d
+```
+
+Create a `port-forward` and access the ArgoCD UI in a browser:
+
+```shell
+kubectl port-forward svc/argocd-server :80
+```
 
 #### A Note for Windows Users
 
@@ -139,7 +174,7 @@ If testcontainers fail to connect to your Docker socket on Windows, add the belo
 DOCKER_HOST=tcp://localhost:2375 cargo test
 ```
 
-#### And a note for Linux Users
+#### And a Note for Linux Users
 
 You'll need to "fake" a Docker socket using `podman` (_if_ you're using `podman`, of course).
 Invoke `podman system service --time=0` directly to create a live-socket without using `systemd`.
