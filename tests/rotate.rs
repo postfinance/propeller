@@ -252,7 +252,7 @@ vault:
 
 fn deploy_argocd() {
     let kubectl_apply = Command::new("kubectl")
-        .args(&["apply", "-f", "tests/resources/argocd.deployment.yml"])
+        .args(&["apply", "-f", "argo-cd/manifests/install.yaml"])
         .output()
         .expect("Cannot run 'kubectl apply'");
     if !kubectl_apply.status.success() {
@@ -546,7 +546,7 @@ async fn read_secret_as_json(http_client: Client, url: &str) -> Value {
 
 fn delete_argocd_deployment() {
     let kubectl_delete = Command::new("kubectl")
-        .args(&["delete", "-f", "tests/resources/argocd.deployment.yml"])
+        .args(&["delete", "-f", "argo-cd/manifests/install.yaml"])
         .output()
         .expect("Cannot run 'kubectl delete'");
     if !kubectl_delete.status.success() {
