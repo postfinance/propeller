@@ -27,5 +27,5 @@ ntest = "0.9.3"
 predicates = "3.1.2"
 rustls = "0.23.12"
 schemars = "0.8.21"
-testcontainers-modules = { version = "0.9.0", features = ["hashicorp_vault", "postgres"] }
+testcontainers-modules = { version = "0.10.0", features = ["hashicorp_vault", "postgres"] }
 tokio-postgres = "0.7.11"
