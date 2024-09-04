@@ -13,6 +13,10 @@ updates:
     schedule:
       interval: "daily"
   - package-ecosystem: "gitsubmodule"
-    directory: "/argo-cd/"
+    directory: "/argo-cd"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "cargo"
+    directory: "/utilities"
     schedule:
       interval: "daily"

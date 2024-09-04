@@ -1,46 +1,32 @@
-use assert_cmd::cargo::cargo_bin;
+extern crate core;
+
 use assert_cmd::prelude::*;
-use base64::engine::general_purpose;
-use base64::Engine;
-use lazy_static::lazy_static;
 use ntest::timeout;
 use postgres::NoTls;
 use predicates::str::contains;
-use reqwest::{Client, Response};
+use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::json;
 use std::io::{BufRead, BufReader};
-use std::path::PathBuf;
-use std::process::{Child, Command, Stdio};
-use std::str::FromStr;
-
-mod common;
-
-lazy_static! {
-    static ref BIN_PATH: PathBuf = cargo_bin(env!("CARGO_PKG_NAME"));
-}
-
-#[derive(Deserialize, Serialize)]
-struct VaultSecret {
-    postgresql_active_user: String,
-    postgresql_active_user_password: String,
-    postgresql_user_1: String,
-    postgresql_user_1_password: String,
-    postgresql_user_2: String,
-    postgresql_user_2_password: String,
-}
-
-#[derive(Deserialize, Serialize)]
-struct VaultSecretDTO {
-    data: VaultSecret,
-}
+use std::process::{Command, Stdio};
+use std::time::{Duration, Instant};
+use tokio::time::sleep;
+use utilities::{
+    create_vault_client, deploy_argocd_and_wait_until_ready, get_argocd_access_token,
+    get_kube_client, k3s_container, open_argocd_server_port_forward, postgres_container,
+    read_secret_as_json, vault_container, write_string_to_tempfile,
+};
+use vaultrs::client::VaultClient;
+use vaultrs::kv2;
 
 #[tokio::test]
-#[timeout(120_000)]
+#[timeout(300_000)]
 async fn rotate_secrets() {
-    deploy_argocd();
+    let k3s_container = k3s_container().await;
+    let kubectl = get_kube_client(&k3s_container).await;
+    deploy_argocd_and_wait_until_ready(&kubectl).await;
 
-    let postgres_container = common::postgres_container().await;
+    let postgres_container = postgres_container().await;
 
     let postgres_host = postgres_container.get_host().await.unwrap().to_string();
     let postgres_port = postgres_container
@@ -49,15 +35,13 @@ async fn rotate_secrets() {
         .unwrap()
         .to_string();
 
-    let vault_container = common::vault_container().await;
+    let vault_container = vault_container().await;
 
     let vault_host = vault_container.get_host().await.unwrap();
     let vault_port = vault_container.get_host_port_ipv4(8200).await.unwrap();
 
-    let http_client = Client::new();
-
-    let vault_url = format!("http://{vault_host}:{vault_port}/v1/secret/data/rotate/secrets");
-    reset_vault_secret_path(&http_client, vault_url.as_str()).await;
+    let vault_client = create_vault_client(vault_host.to_string().as_str(), vault_port);
+    reset_vault_secret_path(&vault_client, "rotate/secrets").await;
 
     let mut postgres_client = connect_postgres_client(
         postgres_host.as_str(),
@@ -70,16 +54,21 @@ async fn rotate_secrets() {
     reset_role_initial_password(&mut postgres_client, "user1").await;
     reset_role_initial_password(&mut postgres_client, "user2").await;
 
-    let (argocd_port, mut port_forward) = open_argocd_server_port_forward();
+    let (argocd_port, server_future, stop_sender) = open_argocd_server_port_forward(&kubectl).await;
+    tokio::spawn(server_future);
+
     let argocd_url = format!("http://localhost:{}", argocd_port);
 
-    let argocd_token = get_argocd_access_token(argocd_url.as_str()).await;
+    let argocd_token = get_argocd_access_token(&kubectl, argocd_url.as_str()).await;
     create_argocd_application(argocd_url.as_str(), argocd_token.as_str()).await;
 
-    Command::new(&*BIN_PATH)
+    println!("Setup success; invoking propeller...");
+
+    let mut child = Command::cargo_bin("propeller")
+        .unwrap()
         .arg("rotate")
         .arg("-c")
-        .arg(common::write_string_to_tempfile(
+        .arg(write_string_to_tempfile(
             format!(
                 // language=yaml
                 "
@@ -100,11 +89,39 @@ async fn rotate_secrets() {
         ))
         .env("ARGO_CD_TOKEN", argocd_token)
         .env("VAULT_TOKEN", "root-token")
-        .assert()
-        .success()
-        .stdout(contains("Successfully rotated all secrets"));
+        .env("PROPELLER_LOG_LEVEL", "info")
+        .stdout(Stdio::piped())
+        // .assert()
+        // .success()
+        // .stdout(contains("Successfully rotated all secrets"));
+        .spawn()
+        .expect("Failed to start command");
 
-    let json = read_secret_as_json(http_client, vault_url.as_str()).await;
+    let stdout = child.stdout.take().expect("Failed to capture stdout");
+    let stderr = child.stderr.take().expect("Failed to capture stderr");
+
+    let stdout_reader = BufReader::new(stdout);
+    let stderr_reader = BufReader::new(stderr);
+
+    // Spawn a task to print stdout
+    tokio::spawn(async move {
+        for line in stdout_reader.lines() {
+            println!("STDOUT: {}", line.expect("Failed to read line"));
+        }
+    });
+
+    // Spawn a task to print stderr
+    tokio::spawn(async move {
+        for line in stderr_reader.lines() {
+            println!("STDERR: {}", line.expect("Failed to read line"));
+        }
+    });
+
+    // Wait for the command to complete
+    let status = child.wait().expect("Failed to wait for command");
+    assert!(status.success());
+
+    let json = read_secret_as_json(&vault_client, "rotate/secrets").await;
 
     assert_eq!(
         json["data"]["data"]["postgresql_active_user"]
@@ -162,19 +179,17 @@ async fn rotate_secrets() {
     .await;
 
     // Kill `kubectl port-forward` process
-    let _ = port_forward
-        .kill()
-        .expect("Failed to stop port forward-process");
-
-    delete_argocd_deployment();
+    stop_sender.send(()).expect("Failed to send stop signal");
 }
 
 #[tokio::test]
-#[timeout(120_000)]
+#[timeout(300_000)]
 async fn rotate_application_sync_timeout() {
-    deploy_argocd();
+    let k3s_container = k3s_container().await;
+    let kubectl = get_kube_client(&k3s_container).await;
+    deploy_argocd_and_wait_until_ready(&kubectl).await;
 
-    let postgres_container = common::postgres_container().await;
+    let postgres_container = postgres_container().await;
 
     let postgres_host = postgres_container.get_host().await.unwrap().to_string();
     let postgres_port = postgres_container
@@ -183,15 +198,13 @@ async fn rotate_application_sync_timeout() {
         .unwrap()
         .to_string();
 
-    let vault_container = common::vault_container().await;
+    let vault_container = vault_container().await;
 
     let vault_host = vault_container.get_host().await.unwrap();
     let vault_port = vault_container.get_host_port_ipv4(8200).await.unwrap();
 
-    let http_client = Client::new();
-
-    let vault_url = format!("http://{vault_host}:{vault_port}/v1/secret/data/rotate/secrets");
-    reset_vault_secret_path(&http_client, vault_url.as_str()).await;
+    let vault_client = create_vault_client(vault_host.to_string().as_str(), vault_port);
+    reset_vault_secret_path(&vault_client, "rotate/secrets/timeout").await;
 
     let mut postgres_client = connect_postgres_client(
         postgres_host.as_str(),
@@ -204,16 +217,21 @@ async fn rotate_application_sync_timeout() {
     reset_role_initial_password(&mut postgres_client, "user1").await;
     reset_role_initial_password(&mut postgres_client, "user2").await;
 
-    let (argocd_port, mut port_forward) = open_argocd_server_port_forward();
+    let (argocd_port, server_future, stop_sender) = open_argocd_server_port_forward(&kubectl).await;
+    tokio::spawn(server_future);
+
     let argocd_url = format!("http://localhost:{}", argocd_port);
 
-    let argocd_token = get_argocd_access_token(argocd_url.as_str()).await;
+    let argocd_token = get_argocd_access_token(&kubectl, argocd_url.as_str()).await;
     create_argocd_application(argocd_url.as_str(), argocd_token.as_str()).await;
 
-    Command::new(&*BIN_PATH)
+    println!("Setup success; invoking propeller...");
+
+    Command::cargo_bin("propeller")
+        .unwrap()
         .arg("rotate")
         .arg("-c")
-        .arg(common::write_string_to_tempfile(
+        .arg(write_string_to_tempfile(
             format!(
                 // language=yaml
                 "
@@ -228,13 +246,15 @@ async fn rotate_application_sync_timeout() {
       database: 'demo'
     vault:
       base_url: 'http://{vault_host}:{vault_port}'
-      path: 'rotate/secrets'
+      path: 'rotate/secrets/timeout'
 "
             )
             .as_str(),
         ))
         .env("ARGO_CD_TOKEN", argocd_token)
         .env("VAULT_TOKEN", "root-token")
+        .env("PROPELLER_LOG_LEVEL", "info")
+        .stdout(Stdio::piped())
         .assert()
         .failure()
         .stderr(contains(
@@ -243,30 +263,59 @@ async fn rotate_application_sync_timeout() {
         ));
 
     // Kill `kubectl port-forward` process
-    let _ = port_forward
-        .kill()
-        .expect("Failed to stop port forward-process");
+    stop_sender.send(()).expect("Failed to send stop signal");
+}
+
+#[tokio::test]
+#[timeout(30_000)]
+async fn rotate_missing_vault_token() {
+    Command::cargo_bin("propeller")
+        .unwrap()
+        .arg("rotate")
+        .arg("-c")
+        .arg(write_string_to_tempfile(
+            format!(
+                // language=yaml
+                "
+argo_cd:
+  application: 'propeller'
+  base_url: 'http://localhost:8080'
+postgres:
+  host: 'localhost'
+  port: 5432
+  database: 'demo'
+vault:
+  base_url: 'http://localhost:8200'
+  path: 'rotate/non/existing/path'
+"
+            )
+            .as_str(),
+        ))
+        .env("PROPELLER_LOG_LEVEL", "info")
+        .stdout(Stdio::piped())
+        .assert()
+        .failure()
+        .stderr(contains("Missing VAULT_TOKEN environment variable"));
 }
 
 #[tokio::test]
 #[timeout(30_000)]
 async fn rotate_invalid_initialized_secret() {
-    let vault_container = common::vault_container().await;
+    let vault_container = vault_container().await;
 
     let vault_host = vault_container.get_host().await.unwrap();
     let vault_port = vault_container.get_host_port_ipv4(8200).await.unwrap();
 
-    let http_client = Client::new();
+    let vault_client = create_vault_client(vault_host.to_string().as_str(), vault_port);
+    create_invalid_vault_secret_path(&vault_client, "rotate/invalid/initialized/secret").await;
 
-    let vault_url = format!(
-        "http://{vault_host}:{vault_port}/v1/secret/data/rotate/invalid/initialized/secret"
-    );
-    create_invalid_vault_secret_path(&http_client, vault_url.as_str()).await;
+    println!("Setup success; invoking propeller...");
 
-    Command::new(&*BIN_PATH)
+    Command::cargo_bin("propeller")
+        .unwrap()
         .arg("rotate")
         .arg("-c")
-        .arg(common::write_string_to_tempfile(
+        .arg(write_string_to_tempfile(
             format!(
                 // language=yaml
                 "
@@ -285,6 +334,8 @@ vault:
             .as_str(),
         ))
         .env("VAULT_TOKEN", "root-token")
+        .env("PROPELLER_LOG_LEVEL", "info")
+        .stdout(Stdio::piped())
         .assert()
         .failure()
         .stderr(contains(
@@ -295,15 +346,18 @@ vault:
 #[tokio::test]
 #[timeout(30_000)]
 async fn rotate_non_existing_secret() {
-    let vault_container = common::vault_container().await;
+    let vault_container = vault_container().await;
 
     let vault_host = vault_container.get_host().await.unwrap();
     let vault_port = vault_container.get_host_port_ipv4(8200).await.unwrap();
 
-    Command::new(&*BIN_PATH)
+    println!("Setup success; invoking propeller...");
+
+    Command::cargo_bin("propeller")
+        .unwrap()
         .arg("rotate")
         .arg("-c")
-        .arg(common::write_string_to_tempfile(
+        .arg(write_string_to_tempfile(
             format!(
                 // language=yaml
                 "
@@ -322,6 +376,8 @@ vault:
             .as_str(),
         ))
         .env("VAULT_TOKEN", "root-token")
+        .env("PROPELLER_LOG_LEVEL", "info")
+        .stdout(Stdio::piped())
         .assert()
         .failure()
         .stderr(contains(
@@ -329,76 +385,44 @@ vault:
         ));
 }
 
-fn deploy_argocd() {
-    let kubectl_apply = Command::new("kubectl")
-        .args(&["apply", "-f", "argo-cd/manifests/install.yaml"])
-        .output()
-        .expect("Cannot run 'kubectl apply'");
-    if !kubectl_apply.status.success() {
-        let error = String::from_utf8_lossy(&kubectl_apply.stderr);
-        panic!("Cannot run 'kubectl apply': {}", error);
-    }
-
-    let kubectl_wait = Command::new("kubectl")
-        .args(&[
-            "wait",
-            "--for=condition=Ready",
-            "--selector=app.kubernetes.io/name=argocd-server",
-            "--timeout=60s", // Especially in GitHub Actions this can take a little longer
-            "pod",
-        ])
-        .output()
-        .expect("Failed to wait for ArgoCD; readiness not reached");
-    if !kubectl_wait.status.success() {
-        let error = String::from_utf8_lossy(&kubectl_wait.stderr);
-        panic!(
-            "Failed to wait for ArgoCD; readiness not reached': {}",
-            error
-        );
-    }
+#[derive(Deserialize, Serialize)]
+struct VaultSecret {
+    postgresql_active_user: String,
+    postgresql_active_user_password: String,
+    postgresql_user_1: String,
+    postgresql_user_1_password: String,
+    postgresql_user_2: String,
+    postgresql_user_2_password: String,
 }
 
-async fn reset_vault_secret_path(client: &Client, url: &str) {
-    let initial_secret = VaultSecretDTO {
-        data: VaultSecret {
-            postgresql_active_user: "user1".to_string(),
-            postgresql_active_user_password: "initialpw".to_string(),
-            postgresql_user_1: "user1".to_string(),
-            postgresql_user_1_password: "initialpw".to_string(),
-            postgresql_user_2: "user2".to_string(),
-            postgresql_user_2_password: "initialpw".to_string(),
-        },
+async fn reset_vault_secret_path(vault_client: &VaultClient, secret_path: &str) {
+    let initial_secret = VaultSecret {
+        postgresql_active_user: "user1".to_string(),
+        postgresql_active_user_password: "initialpw".to_string(),
+        postgresql_user_1: "user1".to_string(),
+        postgresql_user_1_password: "initialpw".to_string(),
+        postgresql_user_2: "user2".to_string(),
+        postgresql_user_2_password: "initialpw".to_string(),
     };
 
-    write_vault_secret(client, url, &initial_secret).await
-}
-
-async fn create_invalid_vault_secret_path(client: &Client, url: &str) {
-    let initial_secret = VaultSecretDTO {
-        data: VaultSecret {
-            postgresql_active_user: "userX".to_string(), // Note that 'userX' does neither match 'user1' nor 'user2'
-            postgresql_active_user_password: "initialpw".to_string(),
-            postgresql_user_1: "user1".to_string(),
-            postgresql_user_1_password: "initialpw".to_string(),
-            postgresql_user_2: "user2".to_string(),
-            postgresql_user_2_password: "initialpw".to_string(),
-        },
-    };
-
-    write_vault_secret(client, url, &initial_secret).await
-}
-
-async fn write_vault_secret(client: &Client, url: &str, initial_secret: &VaultSecretDTO) {
-    let status = client
-        .post(url)
-        .header("X-Vault-Token", "root-token")
-        .json(&initial_secret)
-        .send()
+    kv2::set(vault_client, "secret", secret_path, &initial_secret)
         .await
-        .expect("Failed to write Vault secret to path")
-        .status()
-        .is_success();
-    assert_eq!(status, true, "Failed to write Vault secret")
+        .expect("Failed to reset Vault secret path");
+}
+
+async fn create_invalid_vault_secret_path(vault_client: &VaultClient, secret_path: &str) {
+    let initial_secret = VaultSecret {
+        postgresql_active_user: "userX".to_string(), // Note that 'userX' does neither match 'user1' nor 'user2'
+        postgresql_active_user_password: "initialpw".to_string(),
+        postgresql_user_1: "user1".to_string(),
+        postgresql_user_1_password: "initialpw".to_string(),
+        postgresql_user_2: "user2".to_string(),
+        postgresql_user_2_password: "initialpw".to_string(),
+    };
+
+    kv2::set(vault_client, "secret", secret_path, &initial_secret)
+        .await
+        .expect("Failed to reset Vault secret path");
 }
 
 async fn connect_postgres_client(
@@ -445,113 +469,6 @@ async fn reset_role_initial_password(postgres_client: &mut tokio_postgres::Clien
     }
 }
 
-fn open_argocd_server_port_forward() -> (u16, Child) {
-    // Start the kubectl port-forward command
-    let mut child = Command::new("kubectl")
-        .args(&["port-forward", "service/argocd-server", ":80"])
-        .stdout(Stdio::piped()) // Capture standard output
-        .stderr(Stdio::piped()) // Capture standard error
-        .spawn()
-        .expect("Failed to deploy ArgoCD");
-
-    // Create a reader for the child's output
-    let stdout = child
-        .stdout
-        .take()
-        .expect("Failed to capture standard output");
-    let reader = BufReader::new(stdout);
-
-    // Find the random port from the output; example:
-    //  $ k port-forward service/argocd-server :443
-    //  Forwarding from 127.0.0.1:51246 -> 8080
-    //  Forwarding from [::1]:51246 -> 8080
-    let mut mapped_port = None;
-    for line in reader.lines() {
-        let line = line.expect("Failed to read line from stdout");
-        if line.contains("Forwarding from") {
-            // Split the line by spaces and extract the port number
-            if let Some(port_str) = line.split_whitespace().nth(2) {
-                if let Some(port) = port_str.split(':').nth(1) {
-                    mapped_port = Some(port.to_string());
-                    break;
-                }
-            }
-        }
-    }
-
-    let port = mapped_port.expect("Failed to find mapped ArgoCD port");
-
-    (u16::from_str(port.as_str()).unwrap(), child)
-}
-
-#[derive(Deserialize)]
-struct LoginResponse {
-    token: String,
-}
-
-async fn get_argocd_access_token(argocd_url: &str) -> String {
-    // Run the kubectl command to get the encoded password
-    let output = Command::new("kubectl")
-        .args(&[
-            "get",
-            "secret",
-            "argocd-initial-admin-secret",
-            "-o",
-            "jsonpath={.data.password}",
-        ])
-        .output()
-        .expect("Failed to read initial ArgoCD password");
-
-    if !output.status.success() {
-        let error = String::from_utf8_lossy(&output.stderr);
-        panic!("Failed to read initial ArgoCD password: {}", error);
-    }
-
-    // Get the encoded password from the command output
-    let encoded_password = String::from_utf8(output.stdout)
-        .expect("Failed to read encoded ArgoCD password from stdout");
-
-    // Decode the base64-encoded password
-    let decoded_password = general_purpose::STANDARD
-        .decode(encoded_password)
-        .expect("Failed to decode initial ArgoCD password");
-    let password = String::from_utf8(decoded_password)
-        .expect("Failed to read decoded initial ArgoCD password");
-
-    // Create a custom http client that accepts self-signed ArgoCD certificate
-    let insecure_client = Client::builder()
-        .danger_accept_invalid_certs(true)
-        .build()
-        .expect("Failed to build custom http client for insecure ArgoCD connection");
-
-    let url = format!("{}/api/v1/session", argocd_url);
-    let payload = json!({
-        "username": "admin",
-        "password": password
-    });
-
-    let response = insecure_client
-        .post(&url)
-        .json(&payload)
-        .send()
-        .await
-        .expect("Failed to exchange ArgoCD token");
-
-    if response.status().is_success() {
-        let login_response: LoginResponse = response
-            .json()
-            .await
-            .expect("Failed to read session response");
-        login_response.token
-    } else {
-        let error_message = response
-            .text()
-            .await
-            .expect("Failed to read response message");
-        panic!("Failed to get Argo CD token: {}", error_message)
-    }
-}
-
 async fn create_argocd_application(argocd_url: &str, auth_token: &str) {
     // Create a custom http client that accepts self-signed ArgoCD certificate
     let insecure_client = Client::builder()
@@ -561,7 +478,7 @@ async fn create_argocd_application(argocd_url: &str, auth_token: &str) {
 
     let url = format!("{}/api/v1/applications", argocd_url);
 
-    let payload = json!({
+    let argocd_application = json!({
         "metadata": {
             "name": "propeller"
         },
@@ -569,14 +486,14 @@ async fn create_argocd_application(argocd_url: &str, auth_token: &str) {
             "project": "default",
             "source": {
                 // TODO: Once made public, change URL
-                // "repoURL": "https://github.com/postfinance/propeller.git",
-                "repoURL": "https://github.com/bbortt/propeller-deployment.git",
+                // "repoURL": "https://github.com/postfinance/propeller",
+                "repoURL": "https://github.com/bbortt/propeller-deployment",
                 "path": "dev/argo-cd",
                 "targetRevision": "main"
             },
             "destination": {
                 "server": "https://kubernetes.default.svc",
-                "namespace": "default"
+                "namespace": "propeller"
             },
             "syncPolicy": {
                 "automated": {
@@ -587,49 +504,33 @@ async fn create_argocd_application(argocd_url: &str, auth_token: &str) {
         }
     });
 
-    let response = insecure_client
-        .post(&url)
-        .header("Authorization", format!("Bearer {}", auth_token))
-        .json(&payload)
-        .send()
-        .await
-        .expect("Failed to create application in ArgoCD");
+    // Pods are "running", but not necessarily "ready" - need another retry here
+    let iteration_duration = Duration::from_secs(3);
+    let timeout_duration = Duration::from_secs(60);
 
-    if !response.status().is_success() {
-        let error_message = response
-            .text()
-            .await
-            .expect("Failed to read response message");
-        panic!("Failed to create application in ArgoCD: {}", error_message)
-    }
-}
+    let start_time = Instant::now();
 
-async fn read_secret_as_json(http_client: Client, url: &str) -> Value {
-    let response: Response = http_client
-        .get(url)
-        .header("X-Vault-Token", "root-token")
-        .send()
-        .await
-        .expect("Failed to receive Vault data");
+    loop {
+        let response = insecure_client
+            .post(&url)
+            .header("Authorization", format!("Bearer {}", auth_token))
+            .json(&argocd_application)
+            .send()
+            .await;
 
-    response
-        .error_for_status_ref()
-        .expect("Failed to reach Vault");
+        match response {
+            Ok(res) if res.status().is_success() => return,
+            Ok(_) => {}
+            Err(_) => {}
+        }
 
-    let json: Value = response
-        .json()
-        .await
-        .expect("Failed to convert Vault response to JSON");
-    json
-}
+        if start_time.elapsed() >= timeout_duration {
+            panic!(
+                "Failed to deploy application to ArgoCD after {} seconds",
+                timeout_duration.as_secs(),
+            );
+        }
 
-fn delete_argocd_deployment() {
-    let kubectl_delete = Command::new("kubectl")
-        .args(&["delete", "-f", "argo-cd/manifests/install.yaml"])
-        .output()
-        .expect("Cannot run 'kubectl delete'");
-    if !kubectl_delete.status.success() {
-        let error = String::from_utf8_lossy(&kubectl_delete.stderr);
-        panic!("Cannot run 'kubectl delete': {}", error);
+        sleep(iteration_duration).await;
     }
 }

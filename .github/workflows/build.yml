@@ -49,27 +49,14 @@ jobs:
         with:
           command: test
           args: --bin propeller
-      - name: Install Kubernetes Cluster
-        uses: nolar/setup-k3d-k3s@v1
-        with:
-          version: latest
-          # k3d-kube
-          k3d-name: kube
-          k3d-args: '-p 10250:10250 --no-rollback --k3s-arg --disable=traefik,servicelb,metrics-server@server:*'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Integration Tests
         uses: actions-rs/cargo@v1
         env:
+          RUST_BACKTRACE: 1
           RUST_TEST_THREADS: 1
         with:
           command: test
-          args: --test *
-      - name: Extract argocd-server Logs
-        if: failure()
-        run: kubectl logs --selector=app.kubernetes.io/name=argocd-server --tail=-1
-      - name: Print Kubernetes Cluster Status
-        if: failure()
-        run: kubectl get all
+          args: --test * -- --nocapture
       - name: Build Binary
         uses: actions-rs/cargo@v1
         with:
