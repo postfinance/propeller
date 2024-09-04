@@ -1,7 +1,6 @@
-use std::{fs::File, io::Read, path::PathBuf};
-
 use log::debug;
 use serde::Deserialize;
+use std::{fs::File, io::Read, path::PathBuf};
 
 #[derive(Deserialize, Debug)]
 pub(crate) struct Config {
@@ -48,7 +47,7 @@ pub(crate) fn read_config(config_path: PathBuf) -> Config {
 
     let mut config_data: String = String::new();
     let mut config_file: File = File::open(config_path)
-        .unwrap_or_else(|_| panic!("Failed to read configuration file: '{}'", path_string));
+        .unwrap_or_else(|e| panic!("Failed to read configuration file '{}': {}", path_string, e));
     config_file
         .read_to_string(&mut config_data)
         .expect("Failed to read configuration file");
@@ -62,7 +61,7 @@ mod tests {
 
     #[test]
     #[should_panic(
-        expected = "Failed to read configuration file: 'tests/resources/config/non_existing.yml'"
+        expected = "Failed to read configuration file 'tests/resources/config/non_existing.yml':" // OS agnostic error follows
     )]
     fn read_config_invalid_file() {
         read_config(PathBuf::from("tests/resources/config/non_existing.yml"));

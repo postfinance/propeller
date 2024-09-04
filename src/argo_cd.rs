@@ -1,6 +1,7 @@
 use log::{debug, info, warn};
 use reqwest::{Client, RequestBuilder};
 use serde::Deserialize;
+use serde_json::json;
 use std::env;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
@@ -37,13 +38,18 @@ impl ArgoCD {
             self.argo_config.application
         );
 
+        let app_name = self.argo_config.application.as_str();
         let url = format!(
             "{}/api/v1/applications/{name}/sync",
             self.argo_config.base_url,
-            name = encode(self.argo_config.application.as_str())
+            name = encode(app_name)
         );
 
-        let request_builder = self.client.post(url.as_str()).json("&body"); // TODO
+        let sync_parameters = json!({
+            "name": app_name,
+        });
+
+        let request_builder = self.client.post(url.as_str()).json(&sync_parameters);
         let request_builder = Self::enhance_with_authorization_token_if_applicable(request_builder);
 
         let request = request_builder
@@ -56,26 +62,87 @@ impl ArgoCD {
             .expect("Failed to sync ArgoCD");
 
         let response_status = response.status();
-        if !response_status.is_client_error() && !response_status.is_server_error() {
-            let local_var_content = self
+        if response_status.is_client_error() || response_status.is_server_error() {
+            let argocd_response = self
                 .rt
                 .block_on(response.text())
-                .unwrap_or_else(|_| panic!("Failed to sync ArgoCD"));
-            panic!("Failed to sync ArgoCD: {}", local_var_content)
+                .expect("Failed to sync ArgoCD");
+            // TODO: Think if this is problematic;
+            // Failed to sync ArgoCD: {"error":"another operation is already in progress","code":9,"message":"another operation is already in progress"}
+
+            panic!("Failed to sync ArgoCD: {}", argocd_response)
         }
+
+        fn is_status_in_progress(app_information: &Application) -> bool {
+            app_information
+                .status
+                .operationState
+                .as_ref()
+                .map(|operation_state| operation_state.phase.clone())
+                .unwrap_or_else(|| "NONE".to_string())
+                == "Running"
+        }
+
+        self.wait_for_status_change(is_status_in_progress)
     }
 
     pub(crate) fn wait_for_rollout(&mut self) {
-        let timeout_seconds: u64 = match self.argo_config.sync_timeout_seconds {
-            Some(seconds) => seconds as u64,
-            None => 60,
-        };
-
         info!(
             "Waiting for rollout of ArgoCD application '{}' to finish - timeout is {} seconds",
-            self.argo_config.application, timeout_seconds
+            self.argo_config.application,
+            self.get_sync_timeout_seconds()
         );
 
+        fn is_status_synced(app_information: &Application) -> bool {
+            app_information.status.sync.status == "Synced"
+                && app_information.status.health.status == "Healthy"
+                && (app_information.status.operationState.is_none()
+                    || app_information
+                        .status
+                        .operationState
+                        .as_ref()
+                        .map(|operation_state| operation_state.phase.clone())
+                        .unwrap_or_else(|| "NONE".to_string())
+                        == "Succeeded")
+        }
+
+        self.wait_for_status_change(is_status_synced)
+    }
+
+    fn get_argocd_client(argo_config: ArgoConfig) -> Client {
+        match argo_config.danger_accept_insecure {
+            Some(accept_insecure) => Client::builder()
+                .danger_accept_invalid_certs(accept_insecure)
+                .build()
+                .expect("Failed to build HTTP client"),
+            None => Client::new(),
+        }
+    }
+
+    fn enhance_with_authorization_token_if_applicable(
+        request_builder: RequestBuilder,
+    ) -> RequestBuilder {
+        let argocd_token = env::var(ARGO_CD_TOKEN);
+        match argocd_token {
+            Ok(token) => {
+                debug!("Applying bearer token to ArgoCD request");
+                request_builder.header("Authorization", format!("Bearer {}", token))
+            }
+            Err(_) => {
+                warn!("You're accessing ArgoCD without authentication (missing {} environment variable)", ARGO_CD_TOKEN);
+                request_builder
+            }
+        }
+    }
+
+    fn get_sync_timeout_seconds(&self) -> u64 {
+        match self.argo_config.sync_timeout_seconds {
+            Some(seconds) => seconds as u64,
+            None => 60,
+        }
+    }
+
+    fn wait_for_status_change(&mut self, condition: fn(&Application) -> bool) {
         let url = format!(
             "{}/api/v1/applications/{name}",
             self.argo_config.base_url,
@@ -89,18 +156,24 @@ impl ArgoCD {
             .build()
             .expect("Failed to build ArgoCD sync status request");
 
+        let timeout_duration = Duration::from_secs(self.get_sync_timeout_seconds());
         let start_time = Instant::now();
-        let timeout_duration = Duration::from_secs(timeout_seconds);
 
         loop {
-            if start_time.elapsed() > timeout_duration {
-                panic!("Timeout reached while waiting for ArgoCD rollout to complete");
+            if start_time.elapsed() >= timeout_duration {
+                panic!("Timeout reached while waiting for ArgoCD sync status");
             }
 
             let response = self
                 .rt
-                .block_on(self.client.execute(request.try_clone().unwrap()))
-                .expect("Failed to get ArgoCD sync status");
+                .block_on(
+                    self.client.execute(
+                        request
+                            .try_clone()
+                            .expect("Failed to request ArgoCD sync status"),
+                    ),
+                )
+                .expect("Failed to request ArgoCD sync status");
 
             if response.status().is_success() {
                 let app_information: Application = self
@@ -108,69 +181,53 @@ impl ArgoCD {
                     .block_on(response.json())
                     .expect("Failed to read ArgoCD sync status response");
 
-                if app_information.status.sync.status == "Synced"
-                    && app_information.status.health.status == "Healthy"
-                {
-                    info!("Application rollout completed successfully");
+                debug!("ArgoCD sync status response: {:?}", app_information);
+
+                if condition(&app_information) {
+                    info!("Desired ArgoCD application status met");
                     return;
                 } else {
+                    let status = app_information.status;
                     debug!(
-                        "Application rollout not finished yet: {{ 'sync': '{}', 'health': '{}' }}",
-                        app_information.status.sync.status, app_information.status.health.status
+                        "ArgoCD application did not meet desired status yet: {{ 'sync': '{}', 'health': '{}', 'operation_state': '{}' }}",
+                        status.sync.status, status.health.status, status.operationState.map(|o| o.phase).unwrap_or_else(|| "None".to_string())
                     );
                 }
             } else {
                 debug!("Failed to get application status: {}", response.status());
             }
 
-            // Wait for 5 seconds before checking again
             sleep(Duration::from_secs(5));
-        }
-    }
-
-    fn enhance_with_authorization_token_if_applicable(
-        request_builder: RequestBuilder,
-    ) -> RequestBuilder {
-        let argocd_token = env::var(ARGO_CD_TOKEN);
-        match argocd_token {
-            Ok(token) => request_builder.header("Authorization", format!("Bearer {}", token)),
-            Err(_) => {
-                warn!("You're accessing ArgoCD without authentication (missing {} environment variable)", ARGO_CD_TOKEN);
-                request_builder
-            }
-        }
-    }
-
-    fn get_argocd_client(argo_config: ArgoConfig) -> Client {
-        match argo_config.danger_accept_insecure {
-            Some(accept_insecure) => Client::builder()
-                .danger_accept_invalid_certs(accept_insecure)
-                .build()
-                .expect("Failed to build HTTP client"),
-            None => Client::new(),
         }
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 struct Application {
     status: ApplicationStatus,
 }
 
-#[derive(Deserialize)]
+#[allow(non_snake_case)]
+#[derive(Debug, Deserialize)]
 struct ApplicationStatus {
     sync: SyncStatus,
     health: HealthStatus,
+    operationState: Option<OperationState>,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 struct SyncStatus {
     status: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 struct HealthStatus {
     status: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct OperationState {
+    phase: String,
 }
 
 #[cfg(test)]

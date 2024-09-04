@@ -62,7 +62,7 @@ The project is connected to [argoproj/argo-cd](https://github.com/argoproj/argo-
 npm ci --cache .npm
 ```
 
-**Note:** The --cache .npm option helps speed up subsequent installations.
+**Note:** The `--cache .npm` option helps speed up subsequent installations.
 
 ## Environment Setup
 
@@ -72,6 +72,7 @@ npm ci --cache .npm
   - One for Vault's backend storage
   - One to simulate the database of an application, used for secret rotation
 - **A Vault instance:** For managing secrets
+- **An ArgoCD Instance:** That manages the productive application
 
 Two options are provided for setting up the environment, either using `podman` or `docker-compose`.
 Refer to the respective scripts ([`dev/podman.sh`](dev/podman.sh) and [`dev/docker-compose.yml`](dev/docker-compose.yml)) for detailed instructions.
@@ -94,6 +95,9 @@ Refer to the respective scripts ([`dev/podman.sh`](dev/podman.sh) and [`dev/dock
   "postgresql_user_2_password": "initialpw"
 }
 ```
+
+- The dev deployment makes use of [Counterfact](https://counterfact.dev) instead of providing a full-fletched Kubernetes with ArgoCD installed.
+  If you have a development instance of Kubernetes available, take a look at the ["ArgoCD Getting Started"](./argo-cd/docs/getting_started.md) section for more information.
 
 ### Setting up with `podman`:
 
@@ -134,27 +138,21 @@ Cargo makes it easy to run the project's unit and integration tests:
 cargo test
 ```
 
-Note that the integration tests make use of both [Kubernetes](https://kubernetes.io/) and [testcontainers](https://testcontainers.com).
+Note that the integration tests make use of [Testcontainers](https://testcontainers.com).
+K3s, Vault and PostgreSQL will be deployed automatically using it.
 
-Vault and PostgreSQL will be deployed automatically using testcontainers.
-But we couldn't get ArgoCD working with testcontainers and `k3s`.
-Therefore, the separate Kubernetes cluster requirement.
-See this [GitHub issue](https://github.com/testcontainers/testcontainers-rs-modules-community/issues/200) for more information.
-
-`kubectl` must also be usable from the `PATH`.
-
-Once you have all this up and running, you can execute the integration tests without further ado.
+Once you access to a virtualization software such as Docker, you can execute the integration tests without further ado.
 
 #### Debugging ArgoCD
 
 For development and debugging purposes it's also good to be able to take a look at ArgoCD sometimes.
-You can install ArgoCD into it using the below command:
+You can install ArgoCD into Kubernetes using the below command:
 
 ```shell
 kubectl apply -f tests/resources/argocd.deployment.yml
 ```
 
-Next, extract the initial password for ArgoCD:
+Next, extract the initial password for ArgoCD (see ["ArgoCD Getting Started"](./argo-cd/docs/getting_started.md) for more information):
 
 ```shell
 kubectl get secret argocd-initial-admin-secret -o jsonpath={.data.password} | base64 -d

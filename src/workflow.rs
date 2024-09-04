@@ -1,4 +1,4 @@
-use log::{debug, info, trace};
+use log::{debug, error, info, trace};
 
 use crate::argo_cd::ArgoCD;
 use crate::cli::RotateArgs;
@@ -17,11 +17,16 @@ pub(crate) fn rotate_secrets_using_switch_method(
 
     info!("Starting 'switch' workflow");
 
-    let mut secret: VaultStructure = vault.read_secret().unwrap_or_else(|_| {
+    let mut secret: VaultStructure = vault.read_secret().unwrap_or_else(|e| {
+        error!(
+            "Failed to read Vault path '{}': {}",
+            config.vault.clone().path,
+            e
+        );
         panic!(
             "Failed to read path '{}' - did you init Vault?",
             config.vault.clone().path
-        )
+        );
     });
 
     if secret.postgresql_active_user != secret.postgresql_user_1
@@ -100,7 +105,7 @@ fn update_passive_user_postgres_password(
     let query = format!("ALTER ROLE {passive_user} WITH PASSWORD '{new_password}'");
 
     conn.execute(query.as_str(), &[])
-        .unwrap_or_else(|_| panic!("Failed to update password of '{}'", passive_user));
+        .unwrap_or_else(|e| panic!("Failed to update password of '{}': {}", passive_user, e));
 
     trace!("Successfully rotated database password of passive user");
 }
