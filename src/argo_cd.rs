@@ -1,7 +1,7 @@
 use log::{debug, info, warn};
+use reqwest::header::CONTENT_TYPE;
 use reqwest::{Client, RequestBuilder};
 use serde::Deserialize;
-use serde_json::json;
 use std::env;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
@@ -45,11 +45,10 @@ impl ArgoCD {
             name = encode(app_name)
         );
 
-        let sync_parameters = json!({
-            "name": app_name,
-        });
-
-        let request_builder = self.client.post(url.as_str()).json(&sync_parameters);
+        let request_builder = self
+            .client
+            .post(url.as_str())
+            .header(CONTENT_TYPE, "application/json");
         let request_builder = Self::enhance_with_authorization_token_if_applicable(request_builder);
 
         let request = request_builder
@@ -72,6 +71,8 @@ impl ArgoCD {
 
             panic!("Failed to sync ArgoCD: {}", argocd_response)
         }
+
+        debug!("ArgoCD sync triggered, waiting for status update");
 
         fn is_status_in_progress(app_information: &Application) -> bool {
             app_information
@@ -170,7 +171,7 @@ impl ArgoCD {
                     self.client.execute(
                         request
                             .try_clone()
-                            .expect("Failed to request ArgoCD sync status"),
+                            .expect("Failed to build ArgoCD sync status request"),
                     ),
                 )
                 .expect("Failed to request ArgoCD sync status");

@@ -1,224 +1,58 @@
-extern crate core;
-
 use assert_cmd::prelude::*;
 use ntest::timeout;
 use postgres::NoTls;
 use predicates::str::contains;
 use reqwest::Client;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::json;
-use std::io::{BufRead, BufReader};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 use tokio::time::sleep;
+use tokio::{join, spawn};
 use utilities::{
     create_vault_client, deploy_argocd_and_wait_until_ready, get_argocd_access_token,
     get_kube_client, k3s_container, open_argocd_server_port_forward, postgres_container,
-    read_secret_as_json, vault_container, write_string_to_tempfile,
+    read_vault_secret, vault_container, write_string_to_tempfile, VaultSecret,
 };
 use vaultrs::client::VaultClient;
 use vaultrs::kv2;
 
-#[tokio::test]
-#[timeout(300_000)]
+#[tokio::test(flavor = "multi_thread")]
 async fn rotate_secrets() {
-    let k3s_container = k3s_container().await;
+    let (k3s_container, postgres_container, vault_container) =
+        join!(k3s_container(), postgres_container(), vault_container());
+
     let kubectl = get_kube_client(&k3s_container).await;
-    deploy_argocd_and_wait_until_ready(&kubectl).await;
 
-    let postgres_container = postgres_container().await;
+    let argocd_deployment = deploy_argocd_and_wait_until_ready(&kubectl);
 
-    let postgres_host = postgres_container.get_host().await.unwrap().to_string();
-    let postgres_port = postgres_container
-        .get_host_port_ipv4(5432)
-        .await
-        .unwrap()
-        .to_string();
-
-    let vault_container = vault_container().await;
-
-    let vault_host = vault_container.get_host().await.unwrap();
-    let vault_port = vault_container.get_host_port_ipv4(8200).await.unwrap();
-
-    let vault_client = create_vault_client(vault_host.to_string().as_str(), vault_port);
-    reset_vault_secret_path(&vault_client, "rotate/secrets").await;
-
-    let mut postgres_client = connect_postgres_client(
-        postgres_host.as_str(),
-        postgres_port.as_str(),
-        "demo",
-        "demo_password",
-    )
-    .await;
-
-    reset_role_initial_password(&mut postgres_client, "user1").await;
-    reset_role_initial_password(&mut postgres_client, "user2").await;
-
-    let (argocd_port, server_future, stop_sender) = open_argocd_server_port_forward(&kubectl).await;
-    tokio::spawn(server_future);
-
-    let argocd_url = format!("http://localhost:{}", argocd_port);
-
-    let argocd_token = get_argocd_access_token(&kubectl, argocd_url.as_str()).await;
-    create_argocd_application(argocd_url.as_str(), argocd_token.as_str()).await;
-
-    println!("Setup success; invoking propeller...");
-
-    let mut child = Command::cargo_bin("propeller")
-        .unwrap()
-        .arg("rotate")
-        .arg("-c")
-        .arg(write_string_to_tempfile(
-            format!(
-                // language=yaml
-                "
-    argo_cd:
-      application: 'propeller'
-      base_url: 'http://127.0.0.1:{argocd_port}'
-      danger_accept_insecure: true
-    postgres:
-      host: '{postgres_host}'
-      port: {postgres_port}
-      database: 'demo'
-    vault:
-      base_url: 'http://{vault_host}:{vault_port}'
-      path: 'rotate/secrets'
-"
-            )
-            .as_str(),
-        ))
-        .env("ARGO_CD_TOKEN", argocd_token)
-        .env("VAULT_TOKEN", "root-token")
-        .env("PROPELLER_LOG_LEVEL", "info")
-        .stdout(Stdio::piped())
-        // .assert()
-        // .success()
-        // .stdout(contains("Successfully rotated all secrets"));
-        .spawn()
-        .expect("Failed to start command");
-
-    let stdout = child.stdout.take().expect("Failed to capture stdout");
-    let stderr = child.stderr.take().expect("Failed to capture stderr");
-
-    let stdout_reader = BufReader::new(stdout);
-    let stderr_reader = BufReader::new(stderr);
-
-    // Spawn a task to print stdout
-    tokio::spawn(async move {
-        for line in stdout_reader.lines() {
-            println!("STDOUT: {}", line.expect("Failed to read line"));
-        }
-    });
-
-    // Spawn a task to print stderr
-    tokio::spawn(async move {
-        for line in stderr_reader.lines() {
-            println!("STDERR: {}", line.expect("Failed to read line"));
-        }
-    });
-
-    // Wait for the command to complete
-    let status = child.wait().expect("Failed to wait for command");
-    assert!(status.success());
-
-    let json = read_secret_as_json(&vault_client, "rotate/secrets").await;
-
-    assert_eq!(
-        json["data"]["data"]["postgresql_active_user"]
-            .as_str()
-            .unwrap(),
-        "user2"
-    );
-    assert_ne!(
-        json["data"]["data"]["postgresql_active_user_password"]
-            .as_str()
-            .unwrap(),
-        "initialpw"
-    );
-    assert_eq!(
-        json["data"]["data"]["postgresql_user_1"].as_str().unwrap(),
-        "user1"
-    );
-    assert_ne!(
-        json["data"]["data"]["postgresql_user_1_password"]
-            .as_str()
-            .unwrap(),
-        "initialpw"
-    );
-    assert_eq!(
-        json["data"]["data"]["postgresql_user_2"].as_str().unwrap(),
-        "user2"
-    );
-    assert_ne!(
-        json["data"]["data"]["postgresql_user_2_password"]
-            .as_str()
-            .unwrap(),
-        "initialpw"
+    let (postgres_host, postgres_port, vault_host, vault_port) = join!(
+        postgres_container.get_host(),
+        postgres_container.get_host_port_ipv4(5432),
+        vault_container.get_host(),
+        vault_container.get_host_port_ipv4(8200)
     );
 
-    // Expect connection works; password has been changed
-    connect_postgres_client(
-        postgres_host.as_str(),
-        postgres_port.as_str(),
-        "user1",
-        json["data"]["data"]["postgresql_user_1_password"]
-            .as_str()
-            .unwrap(),
-    )
-    .await;
+    let postgres_host = postgres_host.unwrap().to_string();
+    let postgres_port = postgres_port.unwrap().to_string();
+    let vault_host = vault_host.unwrap().to_string();
+    let vault_port = vault_port.unwrap();
 
-    // Expect connection works; password has been changed
-    connect_postgres_client(
-        postgres_host.as_str(),
-        postgres_port.as_str(),
-        "user2",
-        json["data"]["data"]["postgresql_user_2_password"]
-            .as_str()
-            .unwrap(),
-    )
-    .await;
+    let vault_client = create_vault_client(&vault_host, vault_port);
+    let (_, postgres_client) = join!(
+        reset_vault_secret_path(&vault_client, "rotate/secrets"),
+        connect_postgres_client(&postgres_host, &postgres_port, "demo", "demo_password",)
+    );
 
-    // Kill `kubectl port-forward` process
-    stop_sender.send(()).expect("Failed to send stop signal");
-}
+    join!(
+        reset_role_initial_password(&postgres_client, "user1"),
+        reset_role_initial_password(&postgres_client, "user2")
+    );
 
-#[tokio::test]
-#[timeout(300_000)]
-async fn rotate_application_sync_timeout() {
-    let k3s_container = k3s_container().await;
-    let kubectl = get_kube_client(&k3s_container).await;
-    deploy_argocd_and_wait_until_ready(&kubectl).await;
+    // Ensure ArgoCD is ready before proceeding
+    argocd_deployment.await;
 
-    let postgres_container = postgres_container().await;
-
-    let postgres_host = postgres_container.get_host().await.unwrap().to_string();
-    let postgres_port = postgres_container
-        .get_host_port_ipv4(5432)
-        .await
-        .unwrap()
-        .to_string();
-
-    let vault_container = vault_container().await;
-
-    let vault_host = vault_container.get_host().await.unwrap();
-    let vault_port = vault_container.get_host_port_ipv4(8200).await.unwrap();
-
-    let vault_client = create_vault_client(vault_host.to_string().as_str(), vault_port);
-    reset_vault_secret_path(&vault_client, "rotate/secrets/timeout").await;
-
-    let mut postgres_client = connect_postgres_client(
-        postgres_host.as_str(),
-        postgres_port.as_str(),
-        "demo",
-        "demo_password",
-    )
-    .await;
-
-    reset_role_initial_password(&mut postgres_client, "user1").await;
-    reset_role_initial_password(&mut postgres_client, "user2").await;
-
-    let (argocd_port, server_future, stop_sender) = open_argocd_server_port_forward(&kubectl).await;
-    tokio::spawn(server_future);
+    let (argocd_port, stop_sender) = open_argocd_server_port_forward(&kubectl).await;
 
     let argocd_url = format!("http://localhost:{}", argocd_port);
 
@@ -237,7 +71,113 @@ async fn rotate_application_sync_timeout() {
                 "
     argo_cd:
       application: 'propeller'
-      base_url: 'http://127.0.0.1:{argocd_port}'
+      base_url: 'http://localhost:{argocd_port}'
+      danger_accept_insecure: true
+    postgres:
+      host: '{postgres_host}'
+      port: {postgres_port}
+      database: 'demo'
+    vault:
+      base_url: 'http://{vault_host}:{vault_port}'
+      path: 'rotate/secrets'
+"
+            )
+            .as_str(),
+        ))
+        .env("ARGO_CD_TOKEN", argocd_token)
+        .env("VAULT_TOKEN", "root-token")
+        .env("PROPELLER_LOG_LEVEL", "debug,rustify=off")
+        .stdout(Stdio::piped())
+        .assert()
+        .success()
+        .stdout(contains("Successfully rotated all secrets"));
+
+    let vault_secret = read_vault_secret(&vault_client, "rotate/secrets").await;
+
+    assert_eq!(vault_secret.postgresql_active_user, "user2");
+    assert_ne!(vault_secret.postgresql_active_user_password, "initialpw");
+    assert_eq!(vault_secret.postgresql_user_1, "user1");
+    assert_ne!(vault_secret.postgresql_user_1_password, "initialpw");
+    assert_eq!(vault_secret.postgresql_user_2, "user2");
+    assert_ne!(vault_secret.postgresql_user_2_password, "initialpw");
+
+    // Expect connection works; password has been changed
+    connect_postgres_client(
+        postgres_host.as_str(),
+        postgres_port.as_str(),
+        "user1",
+        vault_secret.postgresql_user_1_password.as_str(),
+    )
+    .await;
+
+    // Expect connection works; password has been changed
+    connect_postgres_client(
+        postgres_host.as_str(),
+        postgres_port.as_str(),
+        "user2",
+        vault_secret.postgresql_user_2_password.as_str(),
+    )
+    .await;
+
+    // Kill `kubectl port-forward` process
+    stop_sender.send(()).expect("Failed to send stop signal");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn rotate_application_sync_timeout() {
+    let (k3s_container, postgres_container, vault_container) =
+        join!(k3s_container(), postgres_container(), vault_container());
+
+    let kubectl = get_kube_client(&k3s_container).await;
+
+    let argocd_deployment = deploy_argocd_and_wait_until_ready(&kubectl);
+
+    let (postgres_host, postgres_port, vault_host, vault_port) = join!(
+        postgres_container.get_host(),
+        postgres_container.get_host_port_ipv4(5432),
+        vault_container.get_host(),
+        vault_container.get_host_port_ipv4(8200)
+    );
+
+    let postgres_host = postgres_host.unwrap().to_string();
+    let postgres_port = postgres_port.unwrap().to_string();
+    let vault_host = vault_host.unwrap().to_string();
+    let vault_port = vault_port.unwrap();
+
+    let vault_client = create_vault_client(&vault_host, vault_port);
+    let (_, postgres_client) = join!(
+        reset_vault_secret_path(&vault_client, "rotate/secrets/timeout"),
+        connect_postgres_client(&postgres_host, &postgres_port, "demo", "demo_password",)
+    );
+
+    join!(
+        reset_role_initial_password(&postgres_client, "user1"),
+        reset_role_initial_password(&postgres_client, "user2")
+    );
+
+    // Ensure ArgoCD is ready before proceeding
+    argocd_deployment.await;
+
+    let (argocd_port, stop_sender) = open_argocd_server_port_forward(&kubectl).await;
+
+    let argocd_url = format!("http://localhost:{}", argocd_port);
+
+    let argocd_token = get_argocd_access_token(&kubectl, argocd_url.as_str()).await;
+    create_argocd_application(argocd_url.as_str(), argocd_token.as_str()).await;
+
+    println!("Setup success; invoking propeller...");
+
+    Command::cargo_bin("propeller")
+        .unwrap()
+        .arg("rotate")
+        .arg("-c")
+        .arg(write_string_to_tempfile(
+            format!(
+                // language=yaml
+                "
+    argo_cd:
+      application: 'propeller'
+      base_url: 'http://localhost:{argocd_port}'
       danger_accept_insecure: true
       sync_timeout_seconds: 5
     postgres:
@@ -259,7 +199,7 @@ async fn rotate_application_sync_timeout() {
         .failure()
         .stderr(contains(
             // The configured sync timeout of 5 seconds is no match for the 10 seconds sleep in the pre-sync hook
-            "Timeout reached while waiting for ArgoCD rollout to complete",
+            "Timeout reached while waiting for ArgoCD sync status",
         ));
 
     // Kill `kubectl port-forward` process
@@ -385,16 +325,6 @@ vault:
         ));
 }
 
-#[derive(Deserialize, Serialize)]
-struct VaultSecret {
-    postgresql_active_user: String,
-    postgresql_active_user_password: String,
-    postgresql_user_1: String,
-    postgresql_user_1_password: String,
-    postgresql_user_2: String,
-    postgresql_user_2_password: String,
-}
-
 async fn reset_vault_secret_path(vault_client: &VaultClient, secret_path: &str) {
     let initial_secret = VaultSecret {
         postgresql_active_user: "user1".to_string(),
@@ -439,7 +369,7 @@ async fn connect_postgres_client(
     .expect("Failed to build PostgreSQL connection");
 
     // The connection object performs the actual communication with the database, so spawn it off to run on its own
-    tokio::spawn(async move {
+    spawn(async move {
         if let Err(e) = connection.await {
             panic!("Failed to connect to to PostgreSQL: {}", e);
         }
@@ -448,7 +378,7 @@ async fn connect_postgres_client(
     client
 }
 
-async fn reset_role_initial_password(postgres_client: &mut tokio_postgres::Client, role: &str) {
+async fn reset_role_initial_password(postgres_client: &tokio_postgres::Client, role: &str) {
     match postgres_client
         .execute(
             format!("CREATE USER {role} WITH PASSWORD 'initialpw'").as_str(),
@@ -519,7 +449,7 @@ async fn create_argocd_application(argocd_url: &str, auth_token: &str) {
             .await;
 
         match response {
-            Ok(res) if res.status().is_success() => return,
+            Ok(res) if res.status().is_success() => break,
             Ok(_) => {}
             Err(_) => {}
         }
@@ -532,5 +462,86 @@ async fn create_argocd_application(argocd_url: &str, auth_token: &str) {
         }
 
         sleep(iteration_duration).await;
+    }
+
+    wait_for_argocd_application_rollout(argocd_url, &insecure_client, auth_token).await;
+}
+
+#[derive(Debug, Deserialize)]
+struct Application {
+    status: ApplicationStatus,
+}
+
+#[allow(non_snake_case)]
+#[derive(Debug, Deserialize)]
+struct ApplicationStatus {
+    sync: SyncStatus,
+    health: HealthStatus,
+}
+
+#[derive(Debug, Deserialize)]
+struct SyncStatus {
+    status: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct HealthStatus {
+    status: Option<String>,
+}
+
+async fn wait_for_argocd_application_rollout(
+    argocd_url: &str,
+    client: &Client,
+    argocd_token: &str,
+) {
+    let url = format!("{argocd_url}/api/v1/applications/propeller",);
+
+    let request = client
+        .get(url.as_str())
+        .header("Authorization", format!("Bearer {}", argocd_token))
+        .build()
+        .expect("Failed to build ArgoCD sync status request");
+
+    let timeout_duration = Duration::from_secs(60);
+    let start_time = Instant::now();
+
+    loop {
+        if start_time.elapsed() >= timeout_duration {
+            panic!("Timeout reached while waiting for ArgoCD sync status");
+        }
+
+        let response = client
+            .execute(
+                request
+                    .try_clone()
+                    .expect("Failed to build ArgoCD sync status request"),
+            )
+            .await
+            .expect("Failed to request ArgoCD sync status");
+
+        if response.status().is_success() {
+            let app_information: Application = response
+                .json()
+                .await
+                .expect("Failed to read ArgoCD sync status response");
+
+            if app_information
+                .status
+                .sync
+                .status
+                .unwrap_or_else(|| "NONE".to_string())
+                == "Synced"
+                && app_information
+                    .status
+                    .health
+                    .status
+                    .unwrap_or_else(|| "NONE".to_string())
+                    == "Healthy"
+            {
+                return;
+            }
+        }
+
+        sleep(Duration::from_secs(5)).await;
     }
 }
