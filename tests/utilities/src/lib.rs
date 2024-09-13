@@ -11,13 +11,12 @@ use kube::runtime::wait::await_condition;
 use kube::{Api, Client, Config, Discovery, ResourceExt};
 use rand::random;
 use rustls::crypto::CryptoProvider;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use serde_yaml::from_value;
 use std::collections::BTreeMap;
 use std::env::temp_dir;
 use std::fs::{read_to_string, File};
-use std::future::Future;
 use std::io::Write;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -30,6 +29,7 @@ use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpListener;
 use tokio::sync::oneshot;
 use tokio::time::{sleep, timeout};
+use tokio::{join, spawn};
 use tokio_stream::wrappers::TcpListenerStream;
 use vaultrs::client::{VaultClient, VaultClientSettingsBuilder};
 use vaultrs::kv2;
@@ -118,8 +118,10 @@ pub async fn deploy_argocd_and_wait_until_ready(kubectl: &Client) {
 
     let k3s_discovery = get_discovery(kubectl, iteration_duration, timeout_duration).await;
 
-    create_namespace(kubectl, ARGOCD_NAMESPACE).await;
-    create_namespace(kubectl, "propeller").await;
+    join!(
+        create_namespace(kubectl, ARGOCD_NAMESPACE),
+        create_namespace(kubectl, "propeller")
+    );
 
     let patch_params = PatchParams::apply("kubectl-light").force();
     let yaml_content =
@@ -156,13 +158,14 @@ pub async fn deploy_argocd_and_wait_until_ready(kubectl: &Client) {
 
     let pods: Api<Pod> = Api::namespaced(kubectl.clone(), ARGOCD_NAMESPACE);
 
-    await_pod_is_running(&pods, ARGOCD_SERVER_LABEL_SELECTOR, timeout_duration).await;
-    await_pod_is_running(
-        &pods,
-        "app.kubernetes.io/name=argocd-repo-server",
-        timeout_duration,
-    )
-    .await;
+    join!(
+        await_pod_is_running(&pods, ARGOCD_SERVER_LABEL_SELECTOR, timeout_duration),
+        await_pod_is_running(
+            &pods,
+            "app.kubernetes.io/name=argocd-repo-server",
+            timeout_duration,
+        )
+    );
 }
 
 async fn get_discovery(
@@ -274,9 +277,7 @@ async fn get_pod_name_matching_label_filter(pods: &Api<Pod>, label_filter: &str)
     argocd_server.expect("Failed to find 'argocd-server' pod")
 }
 
-pub async fn open_argocd_server_port_forward(
-    kubectl: &Client,
-) -> (u16, impl Future<Output = ()>, oneshot::Sender<()>) {
+pub async fn open_argocd_server_port_forward(kubectl: &Client) -> (u16, oneshot::Sender<()>) {
     let pods: Api<Pod> = Api::namespaced(kubectl.clone(), ARGOCD_NAMESPACE);
 
     let listener = TcpListener::bind("127.0.0.1:0")
@@ -290,7 +291,7 @@ pub async fn open_argocd_server_port_forward(
 
     let pod_name = get_pod_name_matching_label_filter(&pods, ARGOCD_SERVER_LABEL_SELECTOR).await;
 
-    let server = async move {
+    let port_forward = async move {
         let listener = TcpListener::bind(addr).await.unwrap();
         let mut incoming = TcpListenerStream::new(listener);
 
@@ -304,7 +305,7 @@ pub async fn open_argocd_server_port_forward(
                         let pods = pods.clone();
                         let pod_name_ref = pod_name.clone();
 
-                        tokio::spawn(async move {
+                        spawn(async move {
                             if let Err(e) = forward_connection(&pods, pod_name_ref.as_str(), 8080, client_conn).await {
                                 panic!("Failed to forward connection: {}", e);
                             }
@@ -315,7 +316,10 @@ pub async fn open_argocd_server_port_forward(
         }
     };
 
-    (bound_port, server, stop_sender)
+    // Spawn the port-forwarding process off to run on its own
+    spawn(port_forward);
+
+    (bound_port, stop_sender)
 }
 
 async fn forward_connection(
@@ -406,10 +410,23 @@ pub fn create_vault_client(vault_host: &str, vault_port: u16) -> VaultClient {
     .expect("Failed to build vault client")
 }
 
-pub async fn read_secret_as_json(vault_client: &VaultClient, secret_path: &str) -> Value {
-    kv2::read(vault_client, "secret", secret_path)
-        .await
-        .expect("Failed to read Vault secret")
+#[derive(Deserialize, Serialize)]
+pub struct VaultSecret {
+    pub postgresql_active_user: String,
+    pub postgresql_active_user_password: String,
+    pub postgresql_user_1: String,
+    pub postgresql_user_1_password: String,
+    pub postgresql_user_2: String,
+    pub postgresql_user_2_password: String,
+}
+
+pub async fn read_vault_secret(vault_client: &VaultClient, secret_path: &str) -> VaultSecret {
+    from_value(
+        kv2::read(vault_client, "secret", secret_path)
+            .await
+            .expect("Failed to read Vault secret"),
+    )
+    .expect("Failed to parse Vault secret")
 }
 
 pub fn write_string_to_tempfile(content: &str) -> String {
