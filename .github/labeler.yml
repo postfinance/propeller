@@ -20,3 +20,8 @@ documentation:
 
 feature:
   - head-branch: ['^feat', 'feature']
+
+rust:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '*.rs'
