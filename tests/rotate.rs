@@ -54,7 +54,7 @@ async fn rotate_secrets() {
 
     let (argocd_port, stop_sender) = open_argocd_server_port_forward(&kubectl).await;
 
-    let argocd_url = format!("http://localhost:{}", argocd_port);
+    let argocd_url = format!("http://localhost:{argocd_port}");
 
     let argocd_token = get_argocd_access_token(&kubectl, argocd_url.as_str()).await;
     create_argocd_application(argocd_url.as_str(), argocd_token.as_str()).await;
@@ -160,7 +160,7 @@ async fn rotate_application_sync_timeout() {
 
     let (argocd_port, stop_sender) = open_argocd_server_port_forward(&kubectl).await;
 
-    let argocd_url = format!("http://localhost:{}", argocd_port);
+    let argocd_url = format!("http://localhost:{argocd_port}");
 
     let argocd_token = get_argocd_access_token(&kubectl, argocd_url.as_str()).await;
     create_argocd_application(argocd_url.as_str(), argocd_token.as_str()).await;
@@ -406,7 +406,7 @@ async fn create_argocd_application(argocd_url: &str, auth_token: &str) {
         .build()
         .expect("Failed to build custom http client for insecure ArgoCD connection");
 
-    let url = format!("{}/api/v1/applications", argocd_url);
+    let url = format!("{argocd_url}/api/v1/applications");
 
     let argocd_application = json!({
         "metadata": {
@@ -443,7 +443,7 @@ async fn create_argocd_application(argocd_url: &str, auth_token: &str) {
     loop {
         let response = insecure_client
             .post(&url)
-            .header("Authorization", format!("Bearer {}", auth_token))
+            .header("Authorization", format!("Bearer {auth_token}"))
             .json(&argocd_application)
             .send()
             .await;
@@ -498,7 +498,7 @@ async fn wait_for_argocd_application_rollout(
 
     let request = client
         .get(url.as_str())
-        .header("Authorization", format!("Bearer {}", argocd_token))
+        .header("Authorization", format!("Bearer {argocd_token}"))
         .build()
         .expect("Failed to build ArgoCD sync status request");
 
