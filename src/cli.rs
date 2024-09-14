@@ -42,10 +42,6 @@ pub(crate) struct RotateArgs {
     /// The length of the randomly generated alphanumeric password
     #[clap(short, long, default_value = "20")]
     pub(crate) password_length: usize,
-
-    /// Whether the CLI should write a recovery log (contains sensitive information!) or not
-    #[clap(short, long)]
-    pub(crate) write_recovery_log: bool,
 }
 
 /// Arguments specific to the `init-vault` subcommand.

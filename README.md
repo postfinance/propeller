@@ -68,8 +68,8 @@ The configuration file is in YAML format and has the following structure:
 | `argo_cd`  |                          | ArgoCD-related configuration                                                             | ✔️                         |
 |            | `application`            | The name of the application you'd like to synchronise inside ArgoCD                      | ✔️                         |
 |            | `base_url`               | The base URL of your ArgoCD instance                                                     | ✔️                         |
-|            | `danger_accept_insecure` | Whether to accept insecure/self-signed SSL certificates (not recommended for production) | ❌                         |
-|            | `sync_timeout_seconds`   | The timeout in seconds for the synchronization process                                   | ❌                         |
+|            | `danger_accept_insecure` | Whether to accept insecure/self-signed SSL certificates (not recommended for production) | ❌ (default: `false`)      |
+|            | `sync_timeout_seconds`   | The timeout in seconds for the synchronization process                                   | ❌ (default: `60`)         |
 | `postgres` |                          | PostgreSQL database configuration                                                        |                            |
 |            | `host`                   | The hostname or IP address of the PostgreSQL server                                      | ✔️ (if `postgres` is used) |
 |            | `port`                   | The port number on which PostgreSQL is running                                           | ✔️ (if `postgres` is used) |
@@ -92,7 +92,6 @@ Here's an example configuration file with explanations:
 argo_cd:
   application: 'propeller'
   base_url: 'http://localhost:8080'
-  danger_accept_insecure: false # Only use 'true' in non-production environments
   sync_timeout_seconds: 60
 
 # PostgreSQL configuration (required if using a PostgreSQL database)
@@ -163,6 +162,28 @@ propeller init-vault [OPTIONS]
 
 #### Options
 
+```shell
+Initialize a Vault path with the necessary structure for secret management.
+
+This command prepares the Vault backend for subsequent secret rotation operations.
+
+Usage: propeller.exe init-vault [OPTIONS]
+
+Options:
+  -c, --config-path <CONFIG_PATH>
+          Path to the configuration file (default: config.yml)
+
+          [default: config.yml]
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+  -V, --version
+          Print version
+```
+
+Additionally, have a look at the ["Configuration"](#configuration) chapter.
+
 #### Result
 
 After running the command, the specified Vault path will contain a JSON secret with the following structure:
@@ -197,6 +218,39 @@ propeller rotate [OPTIONS]
 ```
 
 #### Options
+
+```shell
+Rotate PostgreSQL database secrets.
+
+This command orchestrates the process of generating new secrets, updating the database, and storing the new secrets in Vault.
+
+Usage: propeller.exe rotate [OPTIONS]
+
+Options:
+  -c, --config-path <CONFIG_PATH>
+          Path to the configuration file (default: config.yml)
+
+          [default: config.yml]
+
+  -p, --password-length <PASSWORD_LENGTH>
+          The length of the randomly generated alphanumeric password
+
+          [default: 20]
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+  -V, --version
+          Print version
+```
+
+Additionally, have a look at the ["Configuration"](#configuration) chapter.
+
+#### Result
+
+If all goes well, the active user will have been switched.
+The passwords of both the user 1 and 2 will have been rotated.
+The binary makes sure that your running application is in sync at all times!
 
 #### Sequence Diagram "Switch"
 
