@@ -17,6 +17,7 @@ use utilities::{
 use vaultrs::client::VaultClient;
 use vaultrs::kv2;
 
+#[ignore]
 #[tokio::test(flavor = "multi_thread")]
 async fn rotate_secrets() {
     let (k3s_container, postgres_container, vault_container) =
@@ -123,6 +124,7 @@ async fn rotate_secrets() {
     stop_sender.send(()).expect("Failed to send stop signal");
 }
 
+#[ignore]
 #[tokio::test(flavor = "multi_thread")]
 async fn rotate_application_sync_timeout() {
     let (k3s_container, postgres_container, vault_container) =

@@ -49,14 +49,36 @@ jobs:
         with:
           command: test
           args: --bin propeller
-      - name: Integration Tests
+      - name: Integration Test 'init-vault'
         uses: actions-rs/cargo@v1
         env:
-          RUST_BACKTRACE: 1
           RUST_TEST_THREADS: 1
         with:
           command: test
-          args: --test * -- --nocapture
+          args: --test init_vault -- --nocapture
+      - name: Integration Test 'rotate' - e2e
+        uses: actions-rs/cargo@v1
+        env:
+          RUST_TEST_THREADS: 1
+        timeout-minutes: 5
+        with:
+          command: test
+          args: --test rotate rotate_secrets -- --exact --ignored --nocapture
+      - name: Integration Test 'rotate' - sync timeout
+        uses: actions-rs/cargo@v1
+        env:
+          RUST_TEST_THREADS: 1
+        timeout-minutes: 5
+        with:
+          command: test
+          args: --test rotate rotate_application_sync_timeout -- --exact --ignored --nocapture
+      - name: Integration Test 'rotate' - exceptions
+        uses: actions-rs/cargo@v1
+        env:
+          RUST_TEST_THREADS: 1
+        with:
+          command: test
+          args: --test rotate -- --nocapture
       - name: Build Binary
         uses: actions-rs/cargo@v1
         with:
