@@ -40,8 +40,8 @@ impl ArgoCD {
 
         let app_name = self.argo_config.application.as_str();
         let url = format!(
-            "{}/api/v1/applications/{name}/sync",
-            self.argo_config.base_url,
+            "{baseUrl}/api/v1/applications/{name}/sync",
+            baseUrl = self.argo_config.base_url,
             name = encode(app_name)
         );
 
@@ -127,7 +127,7 @@ impl ArgoCD {
         match argocd_token {
             Ok(token) => {
                 debug!("Applying bearer token to ArgoCD request");
-                request_builder.header("Authorization", format!("Bearer {}", token))
+                request_builder.header("Authorization", format!("Bearer {token}"))
             }
             Err(_) => {
                 warn!("You're accessing ArgoCD without authentication (missing {} environment variable)", ARGO_CD_TOKEN);
@@ -145,8 +145,8 @@ impl ArgoCD {
 
     fn wait_for_status_change(&mut self, condition: fn(&Application) -> bool) {
         let url = format!(
-            "{}/api/v1/applications/{name}",
-            self.argo_config.base_url,
+            "{baseUrl}/api/v1/applications/{name}",
+            baseUrl = self.argo_config.base_url,
             name = encode(self.argo_config.application.as_str())
         );
 

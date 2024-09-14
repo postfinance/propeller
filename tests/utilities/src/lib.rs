@@ -100,7 +100,7 @@ pub async fn get_kube_client(container: &ContainerAsync<K3s>) -> Client {
         .expect("Failed to read kube secure port");
     config.clusters.iter_mut().for_each(|cluster| {
         if let Some(server) = cluster.cluster.as_mut().and_then(|c| c.server.as_mut()) {
-            *server = format!("https://127.0.0.1:{}", port)
+            *server = format!("https://127.0.0.1:{port}")
         }
     });
 
@@ -212,7 +212,7 @@ async fn create_namespace(kubectl: &Client, namespace_name: &str) {
     namespaces
         .create(&Default::default(), &argocd_namespace)
         .await
-        .expect(format!("Failed to create namespace '{}'", namespace_name).as_str());
+        .expect(format!("Failed to create namespace '{namespace_name}'").as_str());
 }
 
 fn create_singleton_btree(key: &str, value: &str) -> Option<BTreeMap<String, String>> {
@@ -255,13 +255,7 @@ async fn await_pod_is_running(pods: &Api<Pod>, label_filter: &str, timeout_durat
         await_condition(pods.clone(), pod_name.as_str(), is_pod_running()),
     )
     .await
-    .expect(
-        format!(
-            "Timed out waiting for pod matching filter: {}",
-            label_filter
-        )
-        .as_str(),
-    );
+    .expect(format!("Timed out waiting for pod matching filter: {label_filter}",).as_str());
 }
 
 async fn get_pod_name_matching_label_filter(pods: &Api<Pod>, label_filter: &str) -> String {
@@ -371,7 +365,7 @@ pub async fn get_argocd_access_token(kubectl: &Client, argocd_url: &str) -> Stri
         .build()
         .expect("Failed to build custom http client for insecure ArgoCD connection");
 
-    let url = format!("{}/api/v1/session", argocd_url);
+    let url = format!("{argocd_url}/api/v1/session");
     let authentication_information = json!({
         "username": "admin",
         "password": password
@@ -402,7 +396,7 @@ pub async fn get_argocd_access_token(kubectl: &Client, argocd_url: &str) -> Stri
 pub fn create_vault_client(vault_host: &str, vault_port: u16) -> VaultClient {
     VaultClient::new(
         VaultClientSettingsBuilder::default()
-            .address(format!("http://{}:{}", vault_host, vault_port))
+            .address(format!("http://{vault_host}:{vault_port}"))
             .token("root-token")
             .build()
             .expect("Failed to build vault client settings"),
@@ -431,7 +425,7 @@ pub async fn read_vault_secret(vault_client: &VaultClient, secret_path: &str) ->
 
 pub fn write_string_to_tempfile(content: &str) -> String {
     let mut dir = temp_dir();
-    let filename = format!("temp_file_{}", random::<u64>());
+    let filename = format!("temp_file_{suffix}", suffix = random::<u64>());
 
     dir.push(filename);
 
