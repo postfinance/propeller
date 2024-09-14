@@ -21,6 +21,11 @@ documentation:
 feature:
   - head-branch: ['^feat', 'feature']
 
+github_actions:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/workflows/*.yml'
+
 rust:
   - changed-files:
       - any-glob-to-any-file:
