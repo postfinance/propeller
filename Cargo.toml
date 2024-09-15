@@ -27,3 +27,6 @@ testcontainers-modules = { version = "0.10.0", features = ["hashicorp_vault", "k
 tokio = { version = "1.40.0", features = ["macros", "rt-multi-thread"] }
 tokio-postgres = "0.7.11"
 utilities = {path= "tests/utilities" }
+
+[build-dependencies]
+cross = "0.2.5"

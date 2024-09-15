@@ -7,4 +7,4 @@
 !package.json
 !package-lock.json
 
-!target/release
+!target/release/propeller

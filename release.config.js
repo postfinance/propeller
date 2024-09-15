@@ -16,7 +16,12 @@ module.exports = {
     [
       '@semantic-release/github',
       {
-        assets: [{ path: 'target/release/propeller' }, { path: 'target/release/propeller.md5' }],
+        assets: [
+          { path: 'target/release/propeller' },
+          { path: 'target/release/propeller.md5' },
+          { path: 'target/x86_64-pc-windows-gnu/release/propeller.exe' },
+          { path: 'target/x86_64-pc-windows-gnu/release/propeller.exe.md5' },
+        ],
       },
     ],
   ],
