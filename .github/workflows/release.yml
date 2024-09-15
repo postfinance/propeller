@@ -48,7 +48,8 @@ jobs:
           command: install
           args: cargo-bump
       - name: Semantic Release
-        run: npx semantic-release
         env:
+          CROSS_REMOTE_COPY_CACHE: 1
           GITHUB_USERNAME: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx semantic-release

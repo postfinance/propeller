@@ -16,7 +16,7 @@ env:
 
 jobs:
   build:
-    name: 'Rust Build'
+    name: Binary Full-Build
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
@@ -83,12 +83,42 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release --verbose
-      - name: Archive Artifacts
+          args: --release
+      - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: cli
+          name: linux
           path: target/release/propeller
+  build-windows:
+    name: Binary Windows-Crosscompile
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install stable Toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: ${{ env.TOOLCHAIN_PROFILE }}
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          override: true
+      - name: Use Cache
+        uses: Swatinem/rust-cache@v2
+      - name: Install cross
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: cross
+      - name: Compile Binary for Windows
+        env:
+          CROSS_REMOTE_COPY_CACHE: 1
+        run: cross build --target x86_64-pc-windows-gnu --release
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: target/x86_64-pc-windows-gnu/release/propeller.exe
   check:
     name: 'Resources Validation'
     runs-on: ubuntu-latest
