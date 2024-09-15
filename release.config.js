@@ -10,6 +10,7 @@ module.exports = {
       '@semantic-release/exec',
       {
         prepareCmd: '.github/pipeline/prepareCmd.sh ${nextRelease.version}',
+        publishCmd: '.github/pipeline/dockerBuild.sh ${nextRelease.version}',
       },
     ],
     [

@@ -18,6 +18,7 @@ jobs:
     permissions:
       contents: write
       issues: write
+      packages: write
       pull-requests: write
     steps:
       - name: Check out code
@@ -49,4 +50,5 @@ jobs:
       - name: Semantic Release
         run: npx semantic-release
         env:
+          GITHUB_USERNAME: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
