@@ -1,4 +1,4 @@
-FROM debian:bullseye-slim
+FROM debian:12.7-slim
 
 ARG RELEASE_VERSION
 
@@ -10,7 +10,7 @@ LABEL org.opencontainers.image.version="$RELEASE_VERSION"
 LABEL org.opencontainers.image.vendor="PostFinance AG"
 
 RUN apt-get update \
-    && apt-get install -y ca-certificates \
+    && apt-get upgrade -y \
     && rm -rf /var/lib/apt/lists/*
 
 COPY target/release/propeller /usr/local/bin/propeller
