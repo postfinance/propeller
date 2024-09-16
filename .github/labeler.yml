@@ -4,19 +4,19 @@ bug:
 ci/cd:
   - changed-files:
       - any-glob-to-any-file:
-        - '.github/**/*'
-        - '*.js'
+          - '.github/**/*'
+          - '*.js'
 
 dependencies:
   - changed-files:
       - any-glob-to-any-file:
-        - 'Cargo.*'
-        - 'package*.json'
+          - 'Cargo.*'
+          - 'package*.json'
 
 documentation:
   - changed-files:
       - any-glob-to-any-file:
-        - '*.md'
+          - '*.md'
 
 feature:
   - head-branch: ['^feat', 'feature']
