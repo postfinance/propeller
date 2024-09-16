@@ -47,6 +47,11 @@ jobs:
         with:
           command: install
           args: cargo-bump
+      - name: Install cross
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: cross
       - name: Semantic Release
         env:
           CROSS_REMOTE_COPY_CACHE: 1
