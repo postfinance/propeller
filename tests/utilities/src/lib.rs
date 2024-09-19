@@ -29,7 +29,7 @@ use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpListener;
 use tokio::sync::oneshot;
 use tokio::time::{sleep, timeout};
-use tokio::{join, spawn};
+use tokio::{join, select, spawn};
 use tokio_stream::wrappers::TcpListenerStream;
 use vaultrs::client::{VaultClient, VaultClientSettingsBuilder};
 use vaultrs::kv2;
@@ -277,8 +277,10 @@ pub async fn open_argocd_server_port_forward(kubectl: &Client) -> (u16, oneshot:
     let listener = TcpListener::bind("127.0.0.1:0")
         .await
         .expect("Failed to find free random port");
-    let addr = listener.local_addr().unwrap();
-    let bound_port = addr.port();
+    let bound_port = listener
+        .local_addr()
+        .expect("Failed to unwrap TCP listener address")
+        .port();
 
     let (stop_sender, stop_receiver) = oneshot::channel::<()>();
     let is_running = Arc::new(AtomicBool::new(true));
@@ -286,10 +288,9 @@ pub async fn open_argocd_server_port_forward(kubectl: &Client) -> (u16, oneshot:
     let pod_name = get_pod_name_matching_label_filter(&pods, ARGOCD_SERVER_LABEL_SELECTOR).await;
 
     let port_forward = async move {
-        let listener = TcpListener::bind(addr).await.unwrap();
         let mut incoming = TcpListenerStream::new(listener);
 
-        tokio::select! {
+        select! {
             _ = stop_receiver => {
                 is_running.store(false, Ordering::SeqCst);
             }
