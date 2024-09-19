@@ -177,10 +177,10 @@ impl ArgoCD {
                 .expect("Failed to request ArgoCD sync status");
 
             if response.status().is_success() {
-                let app_information: Application = self
-                    .rt
-                    .block_on(response.json())
-                    .expect("Failed to read ArgoCD sync status response");
+                let app_information = match self.rt.block_on(response.json::<Application>()).ok() {
+                    Some(app) => app,
+                    None => continue,
+                };
 
                 debug!("ArgoCD sync status response: {:?}", app_information);
 
