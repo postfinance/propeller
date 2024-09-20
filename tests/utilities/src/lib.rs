@@ -1,3 +1,8 @@
+// Copyright (c) 2024 PostFinance AG
+//
+// This software is released under the MIT License.
+// https://opensource.org/licenses/MIT
+
 use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 use base64::Engine;
 use futures::StreamExt;

@@ -1,3 +1,8 @@
+// Copyright (c) 2024 PostFinance AG
+//
+// This software is released under the MIT License.
+// https://opensource.org/licenses/MIT
+
 use log::trace;
 use rand::distr::Alphanumeric;
 use rand::{thread_rng, Rng};

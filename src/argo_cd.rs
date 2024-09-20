@@ -1,3 +1,8 @@
+// Copyright (c) 2024 PostFinance AG
+//
+// This software is released under the MIT License.
+// https://opensource.org/licenses/MIT
+
 use log::{debug, info, warn};
 use reqwest::header::CONTENT_TYPE;
 use reqwest::{Client, RequestBuilder};
