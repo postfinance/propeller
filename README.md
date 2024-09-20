@@ -25,12 +25,6 @@
 
 <hr />
 
-<div style="padding: 15px; border: 1px solid #ffeeba; border-radius: 4px; color: #856404; background-color: #fff3cd; margin-bottom: 20px;">
-  <strong>Note:</strong> This project is still under construction. Features may be incomplete or subject to change.
-</div>
-
-<hr />
-
 ## Target Architecture
 
 `propeller` is designed to seamlessly integrate with a specific application deployment architecture commonly used in modern environments:
@@ -268,3 +262,9 @@ Please [create an issue](https://github.com/postfinance/propeller/issues/new), o
 **Welcome to the bottom of the README club! Since you've come this far, go ahead and smash that like and subsc… er, uh, give this project a ⭐️ on GitHub! 🙏🏼**
 
 <small>Hats off to [@pmcelhaney](https://github.com/pmcelhaney/counterfact) for this amazing line that we couldn't resist stealing.. er, uh, which inspired us. Hope you don't mind 😏</small>
+
+## License
+
+This project is licensed under the MIT License. See the [`LICENSE` file](LICENSE) for details.
+
+Copyright (c) 2024 PostFinance AG
