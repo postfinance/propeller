@@ -106,10 +106,11 @@ fn update_passive_user_postgres_password(
             (secret.postgresql_user_1.clone(), original_password)
         };
 
-    let mut conn = db.connect_for_user(passive_user.clone(), passive_user_password);
+    let mut client = db.connect_for_user(passive_user.clone(), passive_user_password);
     let query = format!("ALTER ROLE {passive_user} WITH PASSWORD '{new_password}'");
 
-    conn.execute(query.as_str(), &[])
+    client
+        .execute(query.as_str(), &[])
         .unwrap_or_else(|e| panic!("Failed to update password of '{}': {}", passive_user, e));
 
     trace!("Successfully rotated database password of passive user");
@@ -139,57 +140,25 @@ mod tests {
         assert_eq!(secret.postgresql_active_user_password, "password1");
     }
 
-    // #[test]
-    // fn update_passive_user_password_user1_active() {
-    //     let client = PropellerDBClient{};
-    //
-    //     let mut secret: VaultStructure = create_vault_structure_active_user_1();
-    //
-    //     let new_password = "new_password".to_string();
-    //
-    //     update_passive_user_postgres_password(client, & mut secret, new_password.clone());
-    //
-    //     assert_eq!(secret.postgresql_active_user, "user1");
-    //     assert_eq!(secret.postgresql_active_user_password, "password1");
-    //     assert_eq!(secret.postgresql_user_2_password, new_password);
-    // }
-    //
-    // #[test]
-    // fn update_passive_user_password_user2_active() {
-    //     let client = PropellerDBClient{};
-    //
-    //     let mut secret: VaultStructure = create_vault_structure_active_user_2();
-    //
-    //     let new_password = "new_password".to_string();
-    //
-    //     update_passive_user_postgres_password(client,&mut secret, new_password.clone());
-    //
-    //     assert_eq!(secret.postgresql_active_user, "user2");
-    //     assert_eq!(secret.postgresql_active_user_password, "password2");
-    //     assert_eq!(secret.postgresql_user_1_password, new_password);
-    // }
-
     fn create_vault_structure_active_user_1() -> VaultStructure {
-        let secret = VaultStructure {
+        VaultStructure {
             postgresql_active_user: "user1".to_string(),
             postgresql_active_user_password: "password1".to_string(),
             postgresql_user_1: "user1".to_string(),
             postgresql_user_1_password: "password1".to_string(),
             postgresql_user_2: "user2".to_string(),
             postgresql_user_2_password: "password2".to_string(),
-        };
-        secret
+        }
     }
 
     fn create_vault_structure_active_user_2() -> VaultStructure {
-        let secret = VaultStructure {
+        VaultStructure {
             postgresql_active_user: "user2".to_string(),
             postgresql_active_user_password: "password2".to_string(),
             postgresql_user_1: "user1".to_string(),
             postgresql_user_1_password: "password1".to_string(),
             postgresql_user_2: "user2".to_string(),
             postgresql_user_2_password: "password2".to_string(),
-        };
-        secret
+        }
     }
 }

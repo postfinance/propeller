@@ -89,8 +89,11 @@ mod tests {
 
     fn should_process_path(path: &Path) -> bool {
         let path_str = path.to_str().unwrap();
-        if path_str.starts_with("tests/utilities") {
-            path_str == "tests/utilities/src" || path_str.starts_with("tests/utilities/src/")
+        if path_str.starts_with("tests/utilities") || path_str.starts_with("tests\\utilities") {
+            path_str == "tests/utilities/src"
+                || path_str.starts_with("tests/utilities/src/")
+                || path_str == "tests\\utilities\\src"
+                || path_str.starts_with("tests\\utilities\\src/")
         } else {
             true
         }

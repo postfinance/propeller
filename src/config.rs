@@ -25,8 +25,8 @@ pub(crate) struct ArgoConfig {
 impl Default for ArgoConfig {
     fn default() -> Self {
         ArgoConfig {
-            application: String::from(""),
-            base_url: String::from(""),
+            application: String::from("propeller"),
+            base_url: String::from("http://localhost:3100"),
             danger_accept_insecure: Option::from(false),
             sync_timeout_seconds: Option::from(60),
         }
@@ -40,10 +40,29 @@ pub(crate) struct PostgresConfig {
     pub(crate) database: String,
 }
 
+impl Default for PostgresConfig {
+    fn default() -> Self {
+        PostgresConfig {
+            host: String::from("localhost"),
+            port: 5432,
+            database: String::from("propeller"),
+        }
+    }
+}
+
 #[derive(Clone, Deserialize, Debug)]
 pub(crate) struct VaultConfig {
     pub(crate) base_url: String,
     pub(crate) path: String,
+}
+
+impl Default for VaultConfig {
+    fn default() -> Self {
+        VaultConfig {
+            base_url: String::from("http://localhost:8200"),
+            path: String::from("propeller"),
+        }
+    }
 }
 
 pub(crate) fn read_config(config_path: PathBuf) -> Config {
