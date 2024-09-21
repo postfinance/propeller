@@ -33,7 +33,7 @@ pub(crate) enum Command {
 /// Base arguments for subcommands that share common parameters.
 #[derive(Parser, Debug)]
 pub(crate) struct BaseArgs {
-    /// Path to the configuration file (default: config.yml).
+    /// Path to the configuration file
     #[clap(short, long, default_value = "config.yml")]
     pub(crate) config_path: std::path::PathBuf,
 }

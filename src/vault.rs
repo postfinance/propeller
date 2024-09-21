@@ -119,18 +119,7 @@ mod tests {
 
     #[test]
     fn successful_vault_connect() {
-        let config = Config {
-            argo_cd: ArgoConfig {
-                application: "sut".to_string(),
-                base_url: "http://localhost:3100".to_string(),
-                ..Default::default()
-            },
-            postgres: mock_postgres_config(),
-            vault: VaultConfig {
-                base_url: "http://localhost:8200".to_string(),
-                path: "path/to/my/secret".to_string(),
-            },
-        };
+        let config = create_config();
         env::set_var(VAULT_TOKEN, "test_token"); // Mock environment variable
 
         let vault = Vault::connect(&config);
@@ -142,28 +131,20 @@ mod tests {
     #[test]
     #[should_panic(expected = "Missing VAULT_TOKEN environment variable")]
     fn vault_connect_missing_token() {
-        let config = Config {
-            argo_cd: ArgoConfig {
-                application: "sut".to_string(),
-                base_url: "http://localhost:3100".to_string(),
-                ..Default::default()
-            },
-            postgres: mock_postgres_config(),
+        let config = create_config();
+        env::remove_var(VAULT_TOKEN); // Ensure VAULT_TOKEN is not present
+
+        Vault::connect(&config); // This should panic
+    }
+
+    fn create_config() -> Config {
+        Config {
+            argo_cd: ArgoConfig::default(),
+            postgres: PostgresConfig::default(),
             vault: VaultConfig {
                 base_url: "http://localhost:8200".to_string(),
                 path: "path/to/my/secret".to_string(),
             },
-        };
-        env::remove_var(VAULT_TOKEN); // Ensure VAULT_TOKEN is not present
-
-        let _ = Vault::connect(&config); // This should panic
-    }
-
-    fn mock_postgres_config() -> PostgresConfig {
-        PostgresConfig {
-            host: "".to_string(),
-            port: 1234,
-            database: "".to_string(),
         }
     }
 }

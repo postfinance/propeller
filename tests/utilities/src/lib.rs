@@ -21,6 +21,7 @@ use serde_json::{json, Value};
 use serde_yaml::from_value;
 use std::collections::BTreeMap;
 use std::env::temp_dir;
+use std::error::Error;
 use std::fs::{read_to_string, File};
 use std::io::Write;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -226,9 +227,7 @@ fn create_singleton_btree(key: &str, value: &str) -> Option<BTreeMap<String, Str
     Some(data)
 }
 
-fn multidoc_deserialize(
-    data: &str,
-) -> Result<Vec<serde_yaml::Value>, Box<dyn std::error::Error + 'static>> {
+fn multidoc_deserialize(data: &str) -> Result<Vec<serde_yaml::Value>, Box<dyn Error + 'static>> {
     use serde::Deserialize;
     let mut docs = vec![];
     for de in serde_yaml::Deserializer::from_str(data) {
@@ -327,7 +326,7 @@ async fn forward_connection(
     pod_name: &str,
     port: u16,
     mut client_conn: impl AsyncRead + AsyncWrite + Unpin,
-) -> Result<(), Box<dyn std::error::Error + 'static>> {
+) -> Result<(), Box<dyn Error + 'static>> {
     let mut forwarder = pods.portforward(pod_name, &[port]).await?;
     let mut upstream_conn = forwarder
         .take_stream(port)

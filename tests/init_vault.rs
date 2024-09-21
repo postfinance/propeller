@@ -31,7 +31,7 @@ async fn init_vault_new_path() {
                 // language=yaml
                 "
 argo_cd:
-  application: 'sut'
+  application: 'propeller'
   base_url: 'http://localhost:3100'
 postgres:
   host: 'localhost'
