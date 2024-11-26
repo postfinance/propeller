@@ -5,12 +5,12 @@
 
 use log::trace;
 use rand::distr::Alphanumeric;
-use rand::{thread_rng, Rng};
+use rand::{rng, Rng};
 
 pub(crate) fn generate_random_password(length: usize) -> String {
     trace!("Generating random password");
 
-    let mut rng = thread_rng();
+    let mut rng = rng();
     let password: String = (0..length)
         .map(|_| rng.sample(Alphanumeric) as char)
         .collect();
