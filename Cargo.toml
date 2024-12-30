@@ -10,7 +10,7 @@ lazy_static = "1.5.0"
 log = "0.4.22"
 postgres = "0.19.9"
 rand = "0.9.0-beta.0"
-serde = { version = "1.0.216", features = ["derive"] }
+serde = { version = "1.0.217", features = ["derive"] }
 reqwest = { version = "0.12.10", features = ["json"] }
 serde_json = "1.0.134"
 serde_yaml = "0.9.34+deprecated"
