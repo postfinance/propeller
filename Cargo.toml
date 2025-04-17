@@ -19,7 +19,7 @@ urlencoding = "2.1.3"
 vaultrs = { version = "0.7.4", default-features = false, features = [ "native-tls" ] }
 
 [dev-dependencies]
-assert_cmd = "2.0.16"
+assert_cmd = "2.0.17"
 ntest = "0.9.3"
 predicates = "3.1.3"
 schemars = "0.8.22"
