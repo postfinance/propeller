@@ -23,7 +23,7 @@
   },
   "devDependencies": {
     "@commitlint/config-conventional": "19.8.0",
-    "@openapitools/openapi-generator-cli": "2.19.1",
+    "@openapitools/openapi-generator-cli": "2.20.0",
     "@semantic-release/exec": "7.0.3",
     "@semantic-release/github": "11.0.2",
     "commitlint": "19.8.0",
