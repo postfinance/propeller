@@ -11,7 +11,7 @@ log = "0.4.27"
 postgres = "0.19.10"
 rand = "0.9.1"
 serde = { version = "1.0.219", features = ["derive"] }
-reqwest = { version = "0.12.15", features = ["json"] }
+reqwest = { version = "0.12.17", features = ["json"] }
 serde_json = "1.0.140"
 serde_yaml = "0.9.34+deprecated"
 tokio = { version = "1.45.1", features = ["rt"] }
