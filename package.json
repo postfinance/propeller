@@ -27,7 +27,7 @@
     "@semantic-release/exec": "7.1.0",
     "@semantic-release/github": "11.0.3",
     "commitlint": "19.8.1",
-    "counterfact": "1.4.0",
+    "counterfact": "1.4.1",
     "husky": "9.1.7",
     "lint-staged": "16.1.2",
     "prettier": "3.5.3",
