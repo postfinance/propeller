@@ -22,7 +22,7 @@ vaultrs = { version = "0.7.4", default-features = false, features = [ "native-tl
 assert_cmd = "2.0.17"
 ntest = "0.9.3"
 predicates = "3.1.3"
-schemars = "1.0.0"
+schemars = "1.0.1"
 testcontainers-modules = { version = "0.11.6", features = ["hashicorp_vault", "k3s", "postgres"] }
 tokio = { version = "1.45.1", features = ["macros", "rt-multi-thread"] }
 tokio-postgres = "0.7.12"
