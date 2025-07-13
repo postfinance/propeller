@@ -74,7 +74,7 @@ impl ArgoCD {
             // TODO: Think if this is problematic;
             // Failed to sync ArgoCD: {"error":"another operation is already in progress","code":9,"message":"another operation is already in progress"}
 
-            panic!("Failed to sync ArgoCD: {}", argocd_response)
+            panic!("Failed to sync ArgoCD: {argocd_response}")
         }
 
         debug!("ArgoCD sync triggered, waiting for status update");
@@ -135,7 +135,7 @@ impl ArgoCD {
                 request_builder.header("Authorization", format!("Bearer {token}"))
             }
             Err(_) => {
-                warn!("You're accessing ArgoCD without authentication (missing {} environment variable)", ARGO_CD_TOKEN);
+                warn!("You're accessing ArgoCD without authentication (missing {ARGO_CD_TOKEN} environment variable)");
                 request_builder
             }
         }
@@ -187,7 +187,7 @@ impl ArgoCD {
                     None => continue,
                 };
 
-                debug!("ArgoCD sync status response: {:?}", app_information);
+                debug!("ArgoCD sync status response: {app_information:?}");
 
                 if condition(&app_information) {
                     info!("Desired ArgoCD application status met");

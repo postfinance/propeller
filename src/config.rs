@@ -71,7 +71,7 @@ pub(crate) fn read_config(config_path: PathBuf) -> Config {
 
     let mut config_data: String = String::new();
     let mut config_file: File = File::open(config_path)
-        .unwrap_or_else(|e| panic!("Failed to read configuration file '{}': {}", path_string, e));
+        .unwrap_or_else(|e| panic!("Failed to read configuration file '{path_string}': {e}"));
     config_file
         .read_to_string(&mut config_data)
         .expect("Failed to read configuration file");
