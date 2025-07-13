@@ -111,7 +111,7 @@ fn update_passive_user_postgres_password(
 
     client
         .execute(query.as_str(), &[])
-        .unwrap_or_else(|e| panic!("Failed to update password of '{}': {}", passive_user, e));
+        .unwrap_or_else(|e| panic!("Failed to update password of '{passive_user}': {e}"));
 
     trace!("Successfully rotated database password of passive user");
 }
