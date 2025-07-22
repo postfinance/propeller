@@ -12,7 +12,7 @@ postgres = "0.19.10"
 rand = "0.9.1"
 serde = { version = "1.0.219", features = ["derive"] }
 reqwest = { version = "0.12.22", features = ["json"] }
-serde_json = "1.0.140"
+serde_json = "1.0.141"
 serde_yaml = "0.9.34+deprecated"
 tokio = { version = "1.46.1", features = ["rt"] }
 urlencoding = "2.1.3"
