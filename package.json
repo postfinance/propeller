@@ -23,14 +23,14 @@
   },
   "devDependencies": {
     "@commitlint/config-conventional": "19.8.1",
-    "@openapitools/openapi-generator-cli": "2.23.0",
+    "@openapitools/openapi-generator-cli": "2.23.1",
     "@semantic-release/exec": "7.1.0",
-    "@semantic-release/github": "11.0.3",
+    "@semantic-release/github": "11.0.5",
     "commitlint": "19.8.1",
-    "counterfact": "1.4.1",
+    "counterfact": "1.4.5",
     "husky": "9.1.7",
-    "lint-staged": "16.1.2",
+    "lint-staged": "16.1.6",
     "prettier": "3.6.2",
-    "prettier-plugin-packagejson": "2.5.18"
+    "prettier-plugin-packagejson": "2.5.19"
   }
 }
