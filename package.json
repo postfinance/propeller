@@ -22,7 +22,7 @@
     "prettier:format": "npm run prettier -- --write"
   },
   "devDependencies": {
-    "@commitlint/config-conventional": "20.2.0",
+    "@commitlint/config-conventional": "20.3.0",
     "@openapitools/openapi-generator-cli": "2.27.0",
     "@semantic-release/exec": "7.1.0",
     "@semantic-release/github": "12.0.2",
