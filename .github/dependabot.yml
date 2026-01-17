@@ -5,18 +5,20 @@ updates:
     schedule:
       interval: 'weekly'
   - package-ecosystem: 'cargo'
-    directory: '/'
+    directories:
+      - '/'
+      - '/tests/utilities/'
     schedule:
       interval: 'daily'
   - package-ecosystem: 'npm'
     directory: '/'
     schedule:
       interval: 'daily'
+    groups:
+      npm-dependencies:
+        patterns:
+          - '*'
   - package-ecosystem: 'gitsubmodule'
     directory: '/argo-cd'
-    schedule:
-      interval: 'daily'
-  - package-ecosystem: 'cargo'
-    directory: '/utilities'
     schedule:
       interval: 'daily'
