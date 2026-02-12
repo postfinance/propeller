@@ -5,7 +5,7 @@
 
 use log::trace;
 use rand::distr::Alphanumeric;
-use rand::{rng, Rng};
+use rand::{rng, RngExt};
 
 pub(crate) fn generate_random_password(length: usize) -> String {
     trace!("Generating random password");
