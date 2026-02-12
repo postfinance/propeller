@@ -2758,7 +2758,7 @@ dependencies = [
  "ntest",
  "postgres",
  "predicates",
- "rand 0.9.2",
+ "rand 0.10.0",
  "reqwest 0.13.2",
  "schemars 1.2.1",
  "serde",
