@@ -24,7 +24,7 @@ predicates = "3.1.4"
 schemars = "1.2.1"
 testcontainers-modules = { version = "0.14.0", features = ["hashicorp_vault", "k3s", "postgres"] }
 tokio = { version = "1.50.0", features = ["macros", "rt-multi-thread"] }
-tokio-postgres = "0.7.16"
+tokio-postgres = "0.7.17"
 utilities = {path= "tests/utilities" }
 
 [build-dependencies]
