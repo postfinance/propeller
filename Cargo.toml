@@ -13,7 +13,7 @@ serde = { version = "1.0.228", features = ["derive"] }
 reqwest = { version = "0.13.2", features = ["json"] }
 serde_json = "1.0.149"
 serde_yaml = "0.9.34+deprecated"
-tokio = { version = "1.50.0", features = ["rt"] }
+tokio = { version = "1.51.1", features = ["rt"] }
 urlencoding = "2.1.3"
 vaultrs = { version = "0.8.0", default-features = false, features = [ "native-tls" ] }
 
@@ -23,7 +23,7 @@ ntest = "0.9.5"
 predicates = "3.1.4"
 schemars = "1.2.1"
 testcontainers-modules = { version = "0.14.0", features = ["hashicorp_vault", "k3s", "postgres"] }
-tokio = { version = "1.50.0", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.51.1", features = ["macros", "rt-multi-thread"] }
 tokio-postgres = "0.7.17"
 utilities = {path= "tests/utilities" }
 
