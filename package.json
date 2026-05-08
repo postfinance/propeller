@@ -22,14 +22,14 @@
     "prettier:format": "npm run prettier -- --write"
   },
   "devDependencies": {
-    "@commitlint/config-conventional": "20.5.3",
+    "@commitlint/config-conventional": "21.0.0",
     "@openapitools/openapi-generator-cli": "2.32.0",
     "@semantic-release/exec": "7.1.0",
     "@semantic-release/github": "12.0.6",
-    "commitlint": "20.5.3",
+    "commitlint": "21.0.0",
     "counterfact": "2.11.0",
     "husky": "9.1.7",
-    "lint-staged": "16.4.0",
+    "lint-staged": "17.0.2",
     "prettier": "3.8.3",
     "prettier-plugin-packagejson": "3.0.2"
   }
