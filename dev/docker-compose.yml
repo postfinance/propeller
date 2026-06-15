@@ -37,7 +37,7 @@ services:
 
   # Vault server
   vault:
-    image: hashicorp/vault:1.17.1
+    image: hashicorp/vault:1.21.4
     restart: unless-stopped
     depends_on:
       - postgres-vault

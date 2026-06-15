@@ -46,4 +46,4 @@ podman start vault || \
     -e VAULT_DEV_ROOT_TOKEN_ID=root-token \
     -p 8200:8200 \
     --restart on-failure:3 \
-    hashicorp/vault:1.17.1
+    hashicorp/vault:1.21.4
