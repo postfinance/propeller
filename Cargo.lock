@@ -1149,7 +1149,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee93edf3c501f0035bbeffeccfed0b79e14c311f12195ec0e661e114a0f60da4"
 dependencies = [
  "portable-atomic",
- "rand 0.10.1",
+ "rand 0.10.2",
  "web-time",
 ]
 
@@ -2679,7 +2679,7 @@ dependencies = [
  "hmac",
  "md-5",
  "memchr",
- "rand 0.10.1",
+ "rand 0.10.2",
  "sha2 0.11.0",
  "stringprep",
 ]
@@ -2813,7 +2813,7 @@ dependencies = [
  "ntest",
  "postgres",
  "predicates",
- "rand 0.10.1",
+ "rand 0.10.2",
  "reqwest",
  "schemars 1.2.1",
  "serde",
@@ -2942,9 +2942,9 @@ dependencies = [
 
 [[package]]
 name = "rand"
-version = "0.10.1"
+version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2e8e8bcc7961af1fdac401278c6a831614941f6164ee3bf4ce61b7edb162207"
+checksum = "c7f5fa3a058cd35567ef9bfa5e75732bee0f9e4c55fa90477bef2dfcdbc4be80"
 dependencies = [
  "chacha20",
  "getrandom 0.4.1",
@@ -3993,7 +3993,7 @@ dependencies = [
  "pin-project-lite",
  "postgres-protocol",
  "postgres-types",
- "rand 0.10.1",
+ "rand 0.10.2",
  "socket2",
  "tokio",
  "tokio-util",
@@ -4363,7 +4363,7 @@ dependencies = [
  "futures",
  "k8s-openapi",
  "kube",
- "rand 0.10.1",
+ "rand 0.10.2",
  "reqwest",
  "rustls",
  "serde",
