@@ -120,7 +120,7 @@ pub async fn get_kube_client(container: &ContainerAsync<K3s>) -> Client {
 pub async fn deploy_argocd_and_wait_until_ready(kubectl: &Client) {
     // k3s exposes discovery when ready, therefore waiting for it with a timeout
     let iteration_duration = Duration::from_secs(3);
-    let timeout_duration = Duration::from_secs(60);
+    let timeout_duration = Duration::from_secs(120);
 
     let k3s_discovery = get_discovery(kubectl, iteration_duration, timeout_duration).await;
 

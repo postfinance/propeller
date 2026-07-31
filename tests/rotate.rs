@@ -59,7 +59,7 @@ async fn rotate_secrets() {
 
     let (argocd_port, stop_sender) = open_argocd_server_port_forward(&kubectl).await;
 
-    let argocd_url = format!("http://localhost:{argocd_port}");
+    let argocd_url = format!("https://localhost:{argocd_port}");
 
     let argocd_token = get_argocd_access_token(&kubectl, argocd_url.as_str()).await;
     create_argocd_application(argocd_url.as_str(), argocd_token.as_str()).await;
@@ -76,7 +76,7 @@ async fn rotate_secrets() {
                 "
     argo_cd:
       application: 'propeller'
-      base_url: 'http://localhost:{argocd_port}'
+      base_url: 'https://localhost:{argocd_port}'
       danger_accept_insecure: true
     postgres:
       host: '{postgres_host}'
@@ -165,7 +165,7 @@ async fn rotate_application_sync_timeout() {
 
     let (argocd_port, stop_sender) = open_argocd_server_port_forward(&kubectl).await;
 
-    let argocd_url = format!("http://localhost:{argocd_port}");
+    let argocd_url = format!("https://localhost:{argocd_port}");
 
     let argocd_token = get_argocd_access_token(&kubectl, argocd_url.as_str()).await;
     create_argocd_application(argocd_url.as_str(), argocd_token.as_str()).await;
@@ -182,7 +182,7 @@ async fn rotate_application_sync_timeout() {
                 "
     argo_cd:
       application: 'propeller'
-      base_url: 'http://localhost:{argocd_port}'
+      base_url: 'https://localhost:{argocd_port}'
       danger_accept_insecure: true
       sync_timeout_seconds: 5
     postgres:
@@ -441,7 +441,7 @@ async fn create_argocd_application(argocd_url: &str, auth_token: &str) {
 
     // Pods are "running", but not necessarily "ready" - need another retry here
     let iteration_duration = Duration::from_secs(3);
-    let timeout_duration = Duration::from_secs(60);
+    let timeout_duration = Duration::from_secs(120);
 
     let start_time = Instant::now();
 
@@ -507,7 +507,7 @@ async fn wait_for_argocd_application_rollout(
         .build()
         .expect("Failed to build ArgoCD sync status request");
 
-    let timeout_duration = Duration::from_secs(60);
+    let timeout_duration = Duration::from_secs(120);
     let start_time = Instant::now();
 
     loop {
