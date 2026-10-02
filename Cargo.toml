@@ -19,7 +19,7 @@ vaultrs = { version = "0.8.0", default-features = false, features = [ "native-tl
 
 [dev-dependencies]
 assert_cmd = "2.2.2"
-ntest = "0.9.5"
+ntest = "0.10.0"
 predicates = "3.1.4"
 schemars = "1.2.1"
 testcontainers-modules = { version = "0.15.0", features = ["hashicorp_vault", "k3s", "postgres"] }
